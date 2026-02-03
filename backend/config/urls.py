@@ -18,6 +18,7 @@ from django.contrib import admin
 from django.urls import path, include
 from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
 from django.urls import path, include
+from config.stats import StatsView
 
 
 urlpatterns = [
@@ -29,7 +30,7 @@ urlpatterns = [
     path("api/", include("config.api_urls")),
     path("api/suspects/", include("suspects.urls")),
     path("api/rewards/", include("rewards.urls")),
-
+    path("api/stats/", StatsView.as_view(), name="stats"),
 
 
 ]
