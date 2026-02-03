@@ -28,6 +28,8 @@ urlpatterns = [
     path("api/rbac/", include("rbac.urls")),
     path("api/", include("config.api_urls")),
     path("api/suspects/", include("suspects.urls")),
+    path("api/rewards/", include("rewards.urls")),
+
 
 
 ]
