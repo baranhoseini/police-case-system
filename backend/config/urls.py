@@ -27,6 +27,8 @@ urlpatterns = [
     path("api/auth/", include("accounts.urls")),
     path("api/rbac/", include("rbac.urls")),
     path("api/", include("config.api_urls")),
+    path("api/suspects/", include("suspects.urls")),
+
 
 ]
 
