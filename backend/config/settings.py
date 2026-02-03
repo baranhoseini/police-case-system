@@ -47,6 +47,9 @@ INSTALLED_APPS = [
     "rbac",
     "drf_spectacular",
     "corsheaders",
+    "cases",
+    "evidence",
+
 ]
 
 REST_FRAMEWORK = {
