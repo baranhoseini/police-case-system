@@ -49,6 +49,9 @@ INSTALLED_APPS = [
     "corsheaders",
     "cases",
     "evidence",
+    "suspects",
+    "rewards",
+
 
 ]
 
