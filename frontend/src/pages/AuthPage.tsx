@@ -1,11 +1,14 @@
 import { useMemo, useState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
+import { useNavigate } from "react-router-dom";
 
 import AuthLayout from "../components/layout/AuthLayout";
 import Card from "../components/Card";
 import Button from "../components/Button";
 import Input from "../components/Input";
+
+import { useAuth } from "../features/auth/AuthContext";
 
 import {
   loginSchema,
@@ -70,6 +73,9 @@ function AuthTabs({ mode, setMode }: { mode: Mode; setMode: (m: Mode) => void })
 }
 
 function SignInForm() {
+  const { signIn } = useAuth();
+  const navigate = useNavigate();
+
   const {
     register,
     handleSubmit,
@@ -80,9 +86,11 @@ function SignInForm() {
   });
 
   const onSubmit = async (values: LoginFormValues) => {
-    // Step 9/10: later we connect to API
-    await new Promise((r) => setTimeout(r, 400));
-    alert(`Signed in as: ${values.email}`);
+    await new Promise((r) => setTimeout(r, 300));
+
+    // fake token for now
+    signIn(`fake-token:${values.email}:${Date.now()}`);
+    navigate("/dashboard");
   };
 
   return (
@@ -115,6 +123,9 @@ function SignInForm() {
 }
 
 function SignUpForm() {
+  const { signIn } = useAuth();
+  const navigate = useNavigate();
+
   const {
     register,
     handleSubmit,
@@ -125,8 +136,11 @@ function SignUpForm() {
   });
 
   const onSubmit = async (values: SignupFormValues) => {
-    await new Promise((r) => setTimeout(r, 400));
-    alert(`Account created for: ${values.fullName} (${values.email})`);
+    await new Promise((r) => setTimeout(r, 300));
+
+    // fake token for now
+    signIn(`fake-token:${values.email}:${Date.now()}`);
+    navigate("/dashboard");
   };
 
   const passwordHint = useMemo(

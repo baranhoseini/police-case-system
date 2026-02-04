@@ -1,4 +1,5 @@
 import { Navigate, Route, Routes } from "react-router-dom";
+import ProtectedRoute from "../components/ProtectedRoute";
 
 import HomePage from "./HomePage";
 import AuthPage from "./AuthPage";
@@ -13,22 +14,52 @@ import NotFoundPage from "./NotFoundPage";
 export default function AppRoutes() {
   return (
     <Routes>
-      {/* Public */}
       <Route path="/" element={<HomePage />} />
       <Route path="/auth" element={<AuthPage />} />
       <Route path="/most-wanted" element={<MostWantedPage />} />
 
-      {/* App (will become protected later) */}
-      <Route path="/dashboard" element={<DashboardPage />} />
-      <Route path="/detective-board" element={<DetectiveBoardPage />} />
-      <Route path="/case-status" element={<CaseComplaintsStatusPage />} />
-      <Route path="/reports" element={<ReportsPage />} />
-      <Route path="/evidence" element={<EvidencePage />} />
+      <Route
+        path="/dashboard"
+        element={
+          <ProtectedRoute>
+            <DashboardPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/detective-board"
+        element={
+          <ProtectedRoute>
+            <DetectiveBoardPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/case-status"
+        element={
+          <ProtectedRoute>
+            <CaseComplaintsStatusPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/reports"
+        element={
+          <ProtectedRoute>
+            <ReportsPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/evidence"
+        element={
+          <ProtectedRoute>
+            <EvidencePage />
+          </ProtectedRoute>
+        }
+      />
 
-      {/* Redirect example */}
       <Route path="/login" element={<Navigate to="/auth" replace />} />
-
-      {/* 404 */}
       <Route path="*" element={<NotFoundPage />} />
     </Routes>
   );
