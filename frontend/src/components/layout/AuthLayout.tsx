@@ -16,9 +16,6 @@ export default function AuthLayout({ title = "Authentication", children }: Props
         <h1 style={{ marginTop: 0 }}>{title}</h1>
         {children}
 
-        <p style={{ marginTop: 16, color: "var(--muted)", fontSize: 13 }}>
-          All UI text is in English.
-        </p>
       </div>
     </div>
   );
