@@ -2,13 +2,13 @@ import { useMemo, useState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { useNavigate } from "react-router-dom";
-
 import AuthLayout from "../components/layout/AuthLayout";
 import Card from "../components/Card";
 import Button from "../components/Button";
 import Input from "../components/Input";
-
 import { useAuth } from "../features/auth/AuthContext";
+import { login } from "../services/authService";
+import { getApiErrorMessage } from "../services/apiErrors";
 
 import {
   loginSchema,
@@ -86,12 +86,15 @@ function SignInForm() {
   });
 
   const onSubmit = async (values: LoginFormValues) => {
-    await new Promise((r) => setTimeout(r, 300));
-
-    // fake token for now
-    signIn(`fake-token:${values.email}:${Date.now()}`);
-    navigate("/dashboard");
+    try {
+      const res = await login(values);
+      signIn(res.token);
+      navigate("/dashboard");
+    } catch (err) {
+      alert(getApiErrorMessage(err));
+    }
   };
+
 
   return (
     <Card title="Welcome back">
