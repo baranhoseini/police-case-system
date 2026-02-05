@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import MediaUploader from "../components/MediaUploader";
 
 import Card from "../components/Card";
 import Input from "../components/Input";
@@ -334,17 +335,18 @@ function AddEvidenceCard({ defaultCaseId, onAdded }: { defaultCaseId: string; on
         ) : null}
 
         {kind === "MEDIA" ? (
+          <div style={{ display: "grid", gap: 12 }}>
           <div style={{ display: "grid", gap: 12, gridTemplateColumns: "220px 1fr" }}>
             <label style={{ display: "grid", gap: 6 }}>
               <span style={{ fontSize: 14, color: "var(--muted)" }}>Media type</span>
-              <select
-                value={mediaType}
-                onChange={(e) => setMediaType(e.target.value as "IMAGE" | "VIDEO" | "AUDIO")}
-                style={{
-                  border: "1px solid var(--border)",
-                  padding: "10px 12px",
-                  borderRadius: 10,
-                  background: "white",
+                <select
+                  value={mediaType}
+                  onChange={(e) => setMediaType(e.target.value as "IMAGE" | "VIDEO" | "AUDIO")}
+                  style={{
+                    border: "1px solid var(--border)",
+                    padding: "10px 12px",
+                    borderRadius: 10,
+                    background: "white",
                 }}
               >
                 <option value="IMAGE">Image</option>
@@ -352,9 +354,26 @@ function AddEvidenceCard({ defaultCaseId, onAdded }: { defaultCaseId: string; on
                 <option value="AUDIO">Audio</option>
               </select>
             </label>
-            <Input label="URL" value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://..." />
+
+            <Input
+              label="URL"
+              value={url}
+              onChange={(e) => setUrl(e.target.value)}
+              placeholder="Upload a file or paste a URL..."
+            />
           </div>
-        ) : null}
+
+          <MediaUploader
+            mediaType={mediaType}
+            maxSizeMB={10}
+            onUploaded={(res) => {
+              // After upload, we auto-fill the URL
+              setUrl(res.url);
+            }}
+          />
+        </div>
+      ) : null}
+
 
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
           <Button disabled={!canSubmit} onClick={() => void submit()}>
