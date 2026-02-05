@@ -273,6 +273,9 @@ function NoteCard({
   const isLinkingTargetMode = Boolean(linkingFrom && linkingFrom !== note.id);
 
   const onPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    const target = e.target as HTMLElement;
+    if (target.closest("button")) return;
+
     // If we're in linking mode, clicking the note should select it as target (not drag)
     if (isLinkingTargetMode) {
       onPickAsTarget();
@@ -282,7 +285,7 @@ function NoteCard({
     dragging.current = true;
     const rect = e.currentTarget.getBoundingClientRect();
     offset.current = { dx: e.clientX - rect.left, dy: e.clientY - rect.top };
-    (e.currentTarget as HTMLDivElement).setPointerCapture(e.pointerId);
+    e.currentTarget.setPointerCapture(e.pointerId);
   };
 
   const onPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
