@@ -10,6 +10,8 @@ import CaseComplaintsStatusPage from "./CaseComplaintsStatusPage";
 import ReportsPage from "./ReportsPage";
 import EvidencePage from "./EvidencePage";
 import NotFoundPage from "./NotFoundPage";
+import CasesPage from "./CasesPage";
+import CaseDetailsPage from "./CaseDetailsPage";
 
 export default function AppRoutes() {
   return (
@@ -61,6 +63,25 @@ export default function AppRoutes() {
 
       <Route path="/login" element={<Navigate to="/auth" replace />} />
       <Route path="*" element={<NotFoundPage />} />
+
+      <Route
+        path="/cases"
+        element={
+          <ProtectedRoute>
+            <CasesPage />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/cases/:caseId"
+        element={
+          <ProtectedRoute>
+            <CaseDetailsPage />
+          </ProtectedRoute>
+        }
+      />
+
     </Routes>
   );
 }
