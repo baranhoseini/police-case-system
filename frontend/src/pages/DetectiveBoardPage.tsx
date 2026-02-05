@@ -3,6 +3,8 @@ import MainLayout from "../components/layout/MainLayout";
 import Card from "../components/Card";
 import Button from "../components/Button";
 import Input from "../components/Input";
+import * as htmlToImage from "html-to-image";
+import { downloadDataUrl } from "../services/download";
 
 type NoteId = string;
 
@@ -27,6 +29,7 @@ function genId(prefix: string) {
 export default function DetectiveBoardPage() {
   const boardRef = useRef<HTMLDivElement | null>(null);
 
+  const [exporting, setExporting] = useState(false);
   const [notes, setNotes] = useState<Note[]>(() => [
     {
       id: "N-1001",
@@ -136,6 +139,26 @@ export default function DetectiveBoardPage() {
               <Button onClick={addNote} disabled={!newTitle.trim() || !newText.trim()}>
                 Add note
               </Button>
+              <Button
+                variant="secondary"
+                onClick={async () => {
+                  if (!boardRef.current) return;
+                  setExporting(true);
+                  try {
+                    const dataUrl = await htmlToImage.toPng(boardRef.current, {
+                      pixelRatio: 2,
+                      backgroundColor: "white",
+                    });
+                    downloadDataUrl(dataUrl, `detective-board-${Date.now()}.png`);
+                  } finally {
+                    setExporting(false);
+                  }
+                }}
+                disabled={exporting}
+              >
+              {exporting ? "Exporting..." : "Export PNG"}
+            </Button>
+
             </div>
           </div>
 
