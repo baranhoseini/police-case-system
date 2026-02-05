@@ -1,19 +1,18 @@
 import type { PropsWithChildren } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../../features/auth/AuthContext";
+import SidebarNav from "./SidebarNav";
 
 type Props = PropsWithChildren<{
   title?: string;
 }>;
 
 export default function MainLayout({ title, children }: Props) {
-  // ✅ این یعنی "داخل کامپوننت" (داخل تابع MainLayout)
   const { isAuthenticated, signOut } = useAuth();
   const navigate = useNavigate();
 
   return (
     <div>
-      {/* ✅ این یعنی "داخل navbar" (داخل header بالا) */}
       <header
         style={{
           borderBottom: "1px solid var(--border)",
@@ -78,18 +77,10 @@ export default function MainLayout({ title, children }: Props) {
             top: 16,
           }}
         >
-          <div style={{ fontSize: 12, color: "var(--muted)", marginBottom: 8 }}>
-            Navigation
-          </div>
-
-          <div style={{ display: "grid", gap: 10 }}>
-            <Link to="/dashboard">Dashboard</Link>
-            <Link to="/cases">Cases</Link>
-            <Link to="/evidence">Evidence</Link>
-            <Link to="/detective-board">Detective Board</Link>
-            <Link to="/most-wanted">Most Wanted</Link>
-          </div>
+          <div style={{ fontSize: 12, color: "var(--muted)", marginBottom: 8 }}>Navigation</div>
+          <SidebarNav />
         </aside>
+
 
         <main style={{ minWidth: 0 }}>
           {title ? <h1 style={{ marginTop: 0 }}>{title}</h1> : null}
