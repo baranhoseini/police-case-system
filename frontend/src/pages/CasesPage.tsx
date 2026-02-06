@@ -5,6 +5,9 @@ import Card from "../components/Card";
 import Input from "../components/Input";
 import MainLayout from "../components/layout/MainLayout";
 import Table, { Td, Th } from "../components/Table";
+import Skeleton from "../components/Skeleton";
+import EmptyState from "../components/EmptyState";
+
 import type { CaseStatus, CaseSummary } from "../types/case";
 import { formatCaseStatus, formatComplaintType, getCases } from "../services/casesService";
 
@@ -42,7 +45,10 @@ export default function CasesPage() {
     };
   }, [q, status]);
 
-  const statusLabel = useMemo(() => (status === "ALL" ? "All statuses" : formatCaseStatus(status)), [status]);
+  const statusLabel = useMemo(
+    () => (status === "ALL" ? "All statuses" : formatCaseStatus(status)),
+    [status],
+  );
 
   return (
     <MainLayout title="Cases">
@@ -80,9 +86,17 @@ export default function CasesPage() {
 
         <Card title={`Results • ${statusLabel}`}>
           {loading ? (
-            <p style={{ margin: 0, color: "var(--muted)" }}>Loading cases...</p>
+            <div style={{ display: "grid", gap: 10 }}>
+              <Skeleton height={16} width="30%" />
+              <Skeleton height={38} />
+              <Skeleton height={38} />
+              <Skeleton height={38} />
+            </div>
           ) : items.length === 0 ? (
-            <p style={{ margin: 0, color: "var(--muted)" }}>No cases found.</p>
+            <EmptyState
+              title="No cases found"
+              description="Try adjusting your search or status filter."
+            />
           ) : (
             <Table>
               <thead>
