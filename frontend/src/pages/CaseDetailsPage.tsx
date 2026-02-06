@@ -8,6 +8,7 @@ import Table, { Td, Th } from "../components/Table";
 
 import { getCaseDetails, type CaseDetailsBundle } from "../services/caseDetailsService";
 import { formatCaseStatus, formatComplaintType } from "../services/casesService";
+import Breadcrumbs from "../components/Breadcrumbs";
 
 const TAB_OVERVIEW = "overview";
 const TAB_EVIDENCE = "evidence";
@@ -68,6 +69,13 @@ export default function CaseDetailsPage() {
 
   return (
     <MainLayout title="Case details">
+      <Breadcrumbs
+        items={[
+          { label: "Dashboard", to: "/dashboard" },
+          { label: "Cases", to: "/cases" },
+          { label: caseId ?? "Case" },
+        ]}
+      />
       <div style={{ display: "grid", gap: 14 }}>
         <Card title={`Case: ${caseId}`}>
           {loading ? (
