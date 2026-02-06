@@ -1,0 +1,22 @@
+@media print {
+  header,
+  aside,
+  .no-print {
+    display: none !important;
+  }
+
+  body {
+    background: white !important;
+  }
+
+  .print-area {
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  .container {
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+}
