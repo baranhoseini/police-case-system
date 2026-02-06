@@ -13,13 +13,21 @@ export default function Breadcrumbs({ items }: { items: Crumb[] }) {
           const last = idx === items.length - 1;
 
           return (
-            <div key={`${c.label}-${idx}`} style={{ display: "flex", gap: 8, alignItems: "center" }}>
+            <div
+              key={`${c.label}-${idx}`}
+              style={{ display: "flex", gap: 8, alignItems: "center" }}
+            >
               {c.to && !last ? (
                 <Link to={c.to} style={{ fontWeight: 800 }}>
                   {c.label}
                 </Link>
               ) : (
-                <span style={{ fontWeight: last ? 900 : 700, color: last ? "var(--primary)" : "var(--muted)" }}>
+                <span
+                  style={{
+                    fontWeight: last ? 900 : 700,
+                    color: last ? "var(--primary)" : "var(--muted)",
+                  }}
+                >
                   {c.label}
                 </span>
               )}

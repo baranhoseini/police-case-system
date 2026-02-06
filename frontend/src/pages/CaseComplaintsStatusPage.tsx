@@ -44,7 +44,10 @@ export default function CaseComplaintsStatusPage() {
     <MainLayout title="Case status">
       <div style={{ display: "grid", gap: 14 }}>
         <Card title="Track your case">
-          <div className="no-print" style={{ display: "grid", gap: 12, gridTemplateColumns: "1fr auto" }}>
+          <div
+            className="no-print"
+            style={{ display: "grid", gap: 12, gridTemplateColumns: "1fr auto" }}
+          >
             <Input
               label="Case ID / Tracking code"
               value={query}
@@ -107,7 +110,10 @@ function Timeline({ items }: { items: CaseStatusResult["timeline"] }) {
   return (
     <div style={{ display: "grid", gap: 10 }}>
       {items.map((it, idx) => (
-        <div key={`${it.at}-${idx}`} style={{ display: "grid", gridTemplateColumns: "18px 1fr", gap: 10 }}>
+        <div
+          key={`${it.at}-${idx}`}
+          style={{ display: "grid", gridTemplateColumns: "18px 1fr", gap: 10 }}
+        >
           <div style={{ display: "grid", justifyItems: "center" }}>
             <div
               style={{
@@ -133,7 +139,9 @@ function Timeline({ items }: { items: CaseStatusResult["timeline"] }) {
           >
             <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "baseline" }}>
               <div style={{ fontWeight: 900 }}>{it.title}</div>
-              <div style={{ fontSize: 13, color: "var(--muted)" }}>{formatCaseStatus(it.status)}</div>
+              <div style={{ fontSize: 13, color: "var(--muted)" }}>
+                {formatCaseStatus(it.status)}
+              </div>
             </div>
             <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 4 }}>
               {new Date(it.at).toLocaleString()}

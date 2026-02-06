@@ -19,7 +19,9 @@ export default function EmptyState({ title, description, action }: Props) {
       }}
     >
       <div style={{ fontWeight: 900 }}>{title}</div>
-      {description ? <div style={{ color: "var(--muted)", fontSize: 13 }}>{description}</div> : null}
+      {description ? (
+        <div style={{ color: "var(--muted)", fontSize: 13 }}>{description}</div>
+      ) : null}
       {action ? <div style={{ marginTop: 6 }}>{action}</div> : null}
     </div>
   );

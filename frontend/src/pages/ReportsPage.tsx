@@ -33,8 +33,11 @@ export default function ReportsPage() {
   return (
     <MainLayout title="Reports">
       <div style={{ display: "grid", gap: 14 }}>
-        <Card title="Generate report" >
-          <div className="no-print" style={{ display: "grid", gap: 12, gridTemplateColumns: "1fr auto auto" }}>
+        <Card title="Generate report">
+          <div
+            className="no-print"
+            style={{ display: "grid", gap: 12, gridTemplateColumns: "1fr auto auto" }}
+          >
             <Input
               label="Case ID"
               value={caseId}
@@ -49,11 +52,7 @@ export default function ReportsPage() {
             </div>
 
             <div style={{ alignSelf: "end" }}>
-              <Button
-                variant="secondary"
-                onClick={() => window.print()}
-                disabled={!report}
-              >
+              <Button variant="secondary" onClick={() => window.print()} disabled={!report}>
                 Print / Save as PDF
               </Button>
             </div>
@@ -98,7 +97,10 @@ function ReportPreview({ report }: { report: CaseReport }) {
         <Row label="Status" value={report.case.status} />
         <Row label="Type" value={report.case.complaintType} />
         <Row label="Created" value={new Date(report.case.createdAt).toLocaleString()} />
-        <Row label="Last update" value={report.case.updatedAt ? new Date(report.case.updatedAt).toLocaleString() : "—"} />
+        <Row
+          label="Last update"
+          value={report.case.updatedAt ? new Date(report.case.updatedAt).toLocaleString() : "—"}
+        />
       </Section>
 
       <Section title="Description">
@@ -126,7 +128,14 @@ function ReportPreview({ report }: { report: CaseReport }) {
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div style={{ border: "1px solid var(--border)", borderRadius: 14, padding: 12, background: "white" }}>
+    <div
+      style={{
+        border: "1px solid var(--border)",
+        borderRadius: 14,
+        padding: 12,
+        background: "white",
+      }}
+    >
       <div style={{ fontWeight: 900, marginBottom: 8 }}>{title}</div>
       {children}
     </div>

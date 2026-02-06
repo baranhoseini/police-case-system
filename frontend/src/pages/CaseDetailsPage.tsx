@@ -120,7 +120,9 @@ function CaseHeader({ bundle }: { bundle: CaseDetailsBundle }) {
       <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
         <div style={{ fontSize: 18, fontWeight: 900 }}>{c.title}</div>
         <Badge text={formatCaseStatus(c.status)} />
-        <span style={{ color: "var(--muted)", fontSize: 13 }}>{formatComplaintType(c.complaintType)}</span>
+        <span style={{ color: "var(--muted)", fontSize: 13 }}>
+          {formatComplaintType(c.complaintType)}
+        </span>
       </div>
 
       <p style={{ margin: 0, color: "var(--muted)" }}>{c.description}</p>
@@ -129,7 +131,10 @@ function CaseHeader({ bundle }: { bundle: CaseDetailsBundle }) {
         <MetaRow label="Reporter" value={c.reporterName ?? "—"} />
         <MetaRow label="Contact" value={c.reporterContact ?? "—"} />
         <MetaRow label="Created" value={new Date(c.createdAt).toLocaleString()} />
-        <MetaRow label="Last update" value={c.updatedAt ? new Date(c.updatedAt).toLocaleString() : "—"} />
+        <MetaRow
+          label="Last update"
+          value={c.updatedAt ? new Date(c.updatedAt).toLocaleString() : "—"}
+        />
       </div>
     </div>
   );
@@ -198,9 +203,7 @@ function SuspectsTab({ bundle }: { bundle: CaseDetailsBundle }) {
   // For now we only show IDs; can be expanded later
   return (
     <div style={{ display: "grid", gap: 10 }}>
-      <p style={{ margin: 0, color: "var(--muted)" }}>
-        Suspect profiles will be displayed here.
-      </p>
+      <p style={{ margin: 0, color: "var(--muted)" }}>Suspect profiles will be displayed here.</p>
 
       <Table>
         <thead>
@@ -228,7 +231,9 @@ function TimelineTab({ bundle }: { bundle: CaseDetailsBundle }) {
       {bundle.timeline.map((t) => (
         <Card key={t.id} title={new Date(t.at).toLocaleString()}>
           <p style={{ marginTop: 0, fontWeight: 900 }}>{t.title}</p>
-          {t.description ? <p style={{ margin: 0, color: "var(--muted)" }}>{t.description}</p> : null}
+          {t.description ? (
+            <p style={{ margin: 0, color: "var(--muted)" }}>{t.description}</p>
+          ) : null}
         </Card>
       ))}
     </div>

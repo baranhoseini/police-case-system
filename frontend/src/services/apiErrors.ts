@@ -1,18 +1,24 @@
 import axios from "axios";
 
+function isRecord(v: unknown): v is Record<string, unknown> {
+  return typeof v === "object" && v !== null;
+}
+
 export function getApiErrorMessage(err: unknown): string {
   if (axios.isAxiosError(err)) {
     const status = err.response?.status;
-
-    // Backend may send { message: "..." } or { detail: "..." }
-    const data = err.response?.data as any;
+    const data: unknown = err.response?.data;
 
     const msg =
-      data?.message ||
-      data?.detail ||
-      (typeof data === "string" ? data : null);
+      isRecord(data) && typeof data.message === "string"
+        ? data.message
+        : isRecord(data) && typeof data.detail === "string"
+          ? data.detail
+          : typeof data === "string"
+            ? data
+            : null;
 
-    if (msg) return String(msg);
+    if (msg) return msg;
 
     if (status === 400) return "Bad request. Please check your input.";
     if (status === 401) return "Your session has expired. Please sign in again.";

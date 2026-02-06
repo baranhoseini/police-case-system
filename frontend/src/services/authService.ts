@@ -1,4 +1,3 @@
-import { apiClient } from "./apiClient";
 
 export type LoginPayload = {
   email: string;

@@ -112,17 +112,17 @@ export default function MostWantedPage() {
           <Card title="List">
             {loading ? (
               <div style={{ display: "grid", gap: 10 }}>
-              <Skeleton height={16} width="30%" />
-              <Skeleton height={38} />
-              <Skeleton height={38} />
-              <Skeleton height={38} />
-            </div>
-          ) : filtered.length === 0 ? (
-            <EmptyState
-              title="No results found"
-              description="Try a different search query or choose another threat level."
-            />
-          ) : (
+                <Skeleton height={16} width="30%" />
+                <Skeleton height={38} />
+                <Skeleton height={38} />
+                <Skeleton height={38} />
+              </div>
+            ) : filtered.length === 0 ? (
+              <EmptyState
+                title="No results found"
+                description="Try a different search query or choose another threat level."
+              />
+            ) : (
               <Table>
                 <thead>
                   <tr>

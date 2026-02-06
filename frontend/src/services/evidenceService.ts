@@ -105,7 +105,12 @@ export async function addEvidence(input: AddEvidenceInput): Promise<Evidence> {
       };
       break;
     case "MEDICAL":
-      created = { ...base, kind: "MEDICAL", sampleType: input.sampleType, labNotes: input.labNotes };
+      created = {
+        ...base,
+        kind: "MEDICAL",
+        sampleType: input.sampleType,
+        labNotes: input.labNotes,
+      };
       break;
     case "MEDIA":
       created = { ...base, kind: "MEDIA", mediaType: input.mediaType, url: input.url };

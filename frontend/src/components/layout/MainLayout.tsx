@@ -1,6 +1,6 @@
 import type { PropsWithChildren } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { useAuth } from "../../features/auth/AuthContext";
+import { useAuth } from "../../features/auth/useAuth";
 import SidebarNav from "./SidebarNav";
 
 type Props = PropsWithChildren<{
@@ -80,7 +80,6 @@ export default function MainLayout({ title, children }: Props) {
           <div style={{ fontSize: 12, color: "var(--muted)", marginBottom: 8 }}>Navigation</div>
           <SidebarNav />
         </aside>
-
 
         <main style={{ minWidth: 0 }}>
           {title ? <h1 style={{ marginTop: 0 }}>{title}</h1> : null}
