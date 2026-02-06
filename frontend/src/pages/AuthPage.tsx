@@ -6,7 +6,7 @@ import AuthLayout from "../components/layout/AuthLayout";
 import Card from "../components/Card";
 import Button from "../components/Button";
 import Input from "../components/Input";
-import { useAuth } from "../features/auth/AuthContext";
+import { useAuth } from "../features/auth/useAuth";
 import { login } from "../services/authService";
 import { getApiErrorMessage } from "../services/apiErrors";
 
@@ -95,7 +95,6 @@ function SignInForm() {
     }
   };
 
-
   return (
     <Card title="Welcome back">
       <form onSubmit={handleSubmit(onSubmit)} style={{ display: "grid", gap: 12 }}>
@@ -142,14 +141,11 @@ function SignUpForm() {
     await new Promise((r) => setTimeout(r, 300));
 
     // fake token for now
-    signIn(`fake-token:${values.email}:${Date.now()}`);
+    signIn(`fake-token:${values.email}`);
     navigate("/dashboard");
   };
 
-  const passwordHint = useMemo(
-    () => "Use at least 6 characters. Avoid common passwords.",
-    [],
-  );
+  const passwordHint = useMemo(() => "Use at least 6 characters. Avoid common passwords.", []);
 
   return (
     <Card title="Create your account">

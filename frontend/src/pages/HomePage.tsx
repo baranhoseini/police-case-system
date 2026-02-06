@@ -40,9 +40,7 @@ export default function HomePage() {
 function Hero() {
   return (
     <section style={{ marginBottom: 18 }}>
-      <h1 style={{ marginTop: 0, fontSize: 34, lineHeight: 1.2 }}>
-        Police Case Management System
-      </h1>
+      <h1 style={{ marginTop: 0, fontSize: 34, lineHeight: 1.2 }}>Police Case Management System</h1>
       <p style={{ marginTop: 8, color: "var(--muted)", maxWidth: 760 }}>
         A centralized platform for managing complaints, cases, evidence, and reporting—designed for
         role-based workflows and investigative collaboration.

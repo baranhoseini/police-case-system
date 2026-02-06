@@ -1,6 +1,6 @@
 import { Navigate, useLocation } from "react-router-dom";
 import type { PropsWithChildren } from "react";
-import { useAuth } from "../features/auth/AuthContext";
+import { useAuth } from "../features/auth/useAuth";
 import type { RoleKey } from "../types/user";
 
 type Props = PropsWithChildren<{

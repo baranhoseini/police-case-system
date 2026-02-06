@@ -1,12 +1,6 @@
 import type { ID, ISODateString } from "./common";
 
-export type CaseStatus =
-  | "DRAFT"
-  | "SUBMITTED"
-  | "UNDER_REVIEW"
-  | "ACTIVE"
-  | "CLOSED"
-  | "REJECTED";
+export type CaseStatus = "DRAFT" | "SUBMITTED" | "UNDER_REVIEW" | "ACTIVE" | "CLOSED" | "REJECTED";
 
 export type ComplaintType =
   | "THEFT"

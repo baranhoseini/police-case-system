@@ -4,6 +4,8 @@ import MainLayout from "../components/layout/MainLayout";
 import Card from "../components/Card";
 import Input from "../components/Input";
 import Table, { Td, Th } from "../components/Table";
+import EmptyState from "../components/EmptyState";
+import Skeleton from "../components/Skeleton";
 
 import type { MostWantedItem, MostWantedLevel } from "../types/mostWanted";
 import { formatMostWantedLevel, listMostWanted } from "../services/mostWantedService";
@@ -109,9 +111,17 @@ export default function MostWantedPage() {
         <div style={{ gridColumn: "1 / -1" }}>
           <Card title="List">
             {loading ? (
-              <p style={{ margin: 0, color: "var(--muted)" }}>Loading list...</p>
+              <div style={{ display: "grid", gap: 10 }}>
+                <Skeleton height={16} width="30%" />
+                <Skeleton height={38} />
+                <Skeleton height={38} />
+                <Skeleton height={38} />
+              </div>
             ) : filtered.length === 0 ? (
-              <p style={{ margin: 0, color: "var(--muted)" }}>No results found.</p>
+              <EmptyState
+                title="No results found"
+                description="Try a different search query or choose another threat level."
+              />
             ) : (
               <Table>
                 <thead>

@@ -62,7 +62,6 @@ export default function AppRoutes() {
       />
 
       <Route path="/login" element={<Navigate to="/auth" replace />} />
-      <Route path="*" element={<NotFoundPage />} />
 
       <Route
         path="/cases"
@@ -82,6 +81,7 @@ export default function AppRoutes() {
         }
       />
 
+      <Route path="*" element={<NotFoundPage />} />
     </Routes>
   );
 }

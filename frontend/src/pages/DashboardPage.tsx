@@ -4,7 +4,7 @@ import { Link } from "react-router-dom";
 import Card from "../components/Card";
 import Input from "../components/Input";
 import MainLayout from "../components/layout/MainLayout";
-import { useAuth } from "../features/auth/AuthContext";
+import { useAuth } from "../features/auth/useAuth";
 import { canAccessModule } from "../features/auth/permissions";
 import { MODULES } from "../features/modules/moduleRegistry";
 
@@ -19,8 +19,7 @@ export default function DashboardPage() {
     if (!query) return allowed;
 
     return allowed.filter(
-      (m) =>
-        m.title.toLowerCase().includes(query) || m.description.toLowerCase().includes(query),
+      (m) => m.title.toLowerCase().includes(query) || m.description.toLowerCase().includes(query),
     );
   }, [role, q]);
 
@@ -34,25 +33,33 @@ export default function DashboardPage() {
 
           {/* فقط برای تست، بعداً حذف می‌شود */}
           <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
-            {(["CITIZEN", "POLICE_OFFICER", "DETECTIVE", "CAPTAIN", "JUDGE", "CHIEF", "ADMIN"] as const).map(
-              (r) => (
-                <button
-                  key={r}
-                  type="button"
-                  onClick={() => setRole(r)}
-                  style={{
-                    border: "1px solid var(--border)",
-                    padding: "8px 10px",
-                    borderRadius: 10,
-                    cursor: "pointer",
-                    background: "white",
-                    fontWeight: 700,
-                  }}
-                >
-                  {r}
-                </button>
-              ),
-            )}
+            {(
+              [
+                "CITIZEN",
+                "POLICE_OFFICER",
+                "DETECTIVE",
+                "CAPTAIN",
+                "JUDGE",
+                "CHIEF",
+                "ADMIN",
+              ] as const
+            ).map((r) => (
+              <button
+                key={r}
+                type="button"
+                onClick={() => setRole(r)}
+                style={{
+                  border: "1px solid var(--border)",
+                  padding: "8px 10px",
+                  borderRadius: 10,
+                  cursor: "pointer",
+                  background: "white",
+                  fontWeight: 700,
+                }}
+              >
+                {r}
+              </button>
+            ))}
           </div>
         </Card>
 

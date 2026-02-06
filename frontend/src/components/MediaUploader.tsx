@@ -112,7 +112,9 @@ export default function MediaUploader({ mediaType, maxSizeMB = 10, onUploaded }:
                 background: "white",
               }}
             >
-              <div style={{ width: `${progress}%`, height: "100%", background: "var(--primary)" }} />
+              <div
+                style={{ width: `${progress}%`, height: "100%", background: "var(--primary)" }}
+              />
             </div>
           </div>
         ) : null}

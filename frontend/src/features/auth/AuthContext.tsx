@@ -1,17 +1,7 @@
-import { createContext, useContext, useMemo, useState, type PropsWithChildren } from "react";
-import { clearToken, getToken, setToken } from "./authStorage";
+import { useMemo, useState, type PropsWithChildren } from "react";
 import type { RoleKey } from "../../types/user";
-
-type AuthState = {
-  token: string | null;
-  role: RoleKey | null;
-  isAuthenticated: boolean;
-  signIn: (token: string, role?: RoleKey) => void;
-  signOut: () => void;
-  setRole: (role: RoleKey) => void;
-};
-
-const AuthContext = createContext<AuthState | null>(null);
+import { clearToken, getToken, setToken } from "./authStorage";
+import { AuthContext, type AuthState } from "./AuthContextBase";
 
 const ROLE_KEY = "pcs_role";
 
@@ -60,10 +50,4 @@ export function AuthProvider({ children }: PropsWithChildren) {
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
-}
-
-export function useAuth() {
-  const ctx = useContext(AuthContext);
-  if (!ctx) throw new Error("useAuth must be used within AuthProvider");
-  return ctx;
 }

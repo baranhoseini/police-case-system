@@ -8,7 +8,13 @@ import MainLayout from "../components/layout/MainLayout";
 import Table, { Td, Th } from "../components/Table";
 
 import type { Evidence } from "../types/evidence";
-import { addEvidence, formatEvidenceKind, formatEvidenceStatus, listEvidence, setEvidenceStatus } from "../services/evidenceService";
+import {
+  addEvidence,
+  formatEvidenceKind,
+  formatEvidenceStatus,
+  listEvidence,
+  setEvidenceStatus,
+} from "../services/evidenceService";
 
 type EvidenceKind = Evidence["kind"];
 
@@ -121,7 +127,13 @@ function EvidenceTable({ items, onChanged }: { items: Evidence[]; onChanged: () 
   );
 }
 
-function AddEvidenceCard({ defaultCaseId, onAdded }: { defaultCaseId: string; onAdded: () => void }) {
+function AddEvidenceCard({
+  defaultCaseId,
+  onAdded,
+}: {
+  defaultCaseId: string;
+  onAdded: () => void;
+}) {
   const [kind, setKind] = useState<EvidenceKind>("IDENTITY");
 
   // common fields
@@ -153,11 +165,24 @@ function AddEvidenceCard({ defaultCaseId, onAdded }: { defaultCaseId: string; on
     if (!title.trim()) return false;
 
     if (kind === "IDENTITY") return Object.keys(identityFields).length > 0;
-    if (kind === "VEHICLE") return Boolean(plateNumber.trim() || vin.trim() || model.trim() || color.trim());
+    if (kind === "VEHICLE")
+      return Boolean(plateNumber.trim() || vin.trim() || model.trim() || color.trim());
     if (kind === "MEDICAL") return Boolean(sampleType.trim() || labNotes.trim());
     if (kind === "MEDIA") return Boolean(url.trim());
     return false;
-  }, [caseId, title, kind, identityFields, plateNumber, vin, model, color, sampleType, labNotes, url]);
+  }, [
+    caseId,
+    title,
+    kind,
+    identityFields,
+    plateNumber,
+    vin,
+    model,
+    color,
+    sampleType,
+    labNotes,
+    url,
+  ]);
 
   const reset = () => {
     setTitle("");
@@ -231,7 +256,12 @@ function AddEvidenceCard({ defaultCaseId, onAdded }: { defaultCaseId: string; on
     <Card title="Add evidence">
       <div style={{ display: "grid", gap: 12 }}>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 260px", gap: 12 }}>
-          <Input label="Case ID" value={caseId} onChange={(e) => setCaseId(e.target.value)} placeholder="C-1001" />
+          <Input
+            label="Case ID"
+            value={caseId}
+            onChange={(e) => setCaseId(e.target.value)}
+            placeholder="C-1001"
+          />
           <label style={{ display: "grid", gap: 6 }}>
             <span style={{ fontSize: 14, color: "var(--muted)" }}>Type</span>
             <select
@@ -253,7 +283,12 @@ function AddEvidenceCard({ defaultCaseId, onAdded }: { defaultCaseId: string; on
         </div>
 
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-          <Input label="Title" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Evidence title" />
+          <Input
+            label="Title"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            placeholder="Evidence title"
+          />
           <Input
             label="Description"
             value={description}
@@ -266,7 +301,12 @@ function AddEvidenceCard({ defaultCaseId, onAdded }: { defaultCaseId: string; on
           <div style={{ display: "grid", gap: 12 }}>
             <Card title="Identity fields (key-value)">
               <div style={{ display: "grid", gap: 10, gridTemplateColumns: "1fr 1fr auto" }}>
-                <Input label="Key" value={kvKey} onChange={(e) => setKvKey(e.target.value)} placeholder="e.g. Passport" />
+                <Input
+                  label="Key"
+                  value={kvKey}
+                  onChange={(e) => setKvKey(e.target.value)}
+                  placeholder="e.g. Passport"
+                />
                 <Input
                   label="Value"
                   value={kvValue}
@@ -320,25 +360,55 @@ function AddEvidenceCard({ defaultCaseId, onAdded }: { defaultCaseId: string; on
 
         {kind === "VEHICLE" ? (
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-            <Input label="Plate number" value={plateNumber} onChange={(e) => setPlateNumber(e.target.value)} placeholder="ABC-1234" />
-            <Input label="VIN" value={vin} onChange={(e) => setVin(e.target.value)} placeholder="Optional" />
-            <Input label="Model" value={model} onChange={(e) => setModel(e.target.value)} placeholder="Optional" />
-            <Input label="Color" value={color} onChange={(e) => setColor(e.target.value)} placeholder="Optional" />
+            <Input
+              label="Plate number"
+              value={plateNumber}
+              onChange={(e) => setPlateNumber(e.target.value)}
+              placeholder="ABC-1234"
+            />
+            <Input
+              label="VIN"
+              value={vin}
+              onChange={(e) => setVin(e.target.value)}
+              placeholder="Optional"
+            />
+            <Input
+              label="Model"
+              value={model}
+              onChange={(e) => setModel(e.target.value)}
+              placeholder="Optional"
+            />
+            <Input
+              label="Color"
+              value={color}
+              onChange={(e) => setColor(e.target.value)}
+              placeholder="Optional"
+            />
           </div>
         ) : null}
 
         {kind === "MEDICAL" ? (
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-            <Input label="Sample type" value={sampleType} onChange={(e) => setSampleType(e.target.value)} placeholder="e.g. Blood" />
-            <Input label="Lab notes" value={labNotes} onChange={(e) => setLabNotes(e.target.value)} placeholder="Optional" />
+            <Input
+              label="Sample type"
+              value={sampleType}
+              onChange={(e) => setSampleType(e.target.value)}
+              placeholder="e.g. Blood"
+            />
+            <Input
+              label="Lab notes"
+              value={labNotes}
+              onChange={(e) => setLabNotes(e.target.value)}
+              placeholder="Optional"
+            />
           </div>
         ) : null}
 
         {kind === "MEDIA" ? (
           <div style={{ display: "grid", gap: 12 }}>
-          <div style={{ display: "grid", gap: 12, gridTemplateColumns: "220px 1fr" }}>
-            <label style={{ display: "grid", gap: 6 }}>
-              <span style={{ fontSize: 14, color: "var(--muted)" }}>Media type</span>
+            <div style={{ display: "grid", gap: 12, gridTemplateColumns: "220px 1fr" }}>
+              <label style={{ display: "grid", gap: 6 }}>
+                <span style={{ fontSize: 14, color: "var(--muted)" }}>Media type</span>
                 <select
                   value={mediaType}
                   onChange={(e) => setMediaType(e.target.value as "IMAGE" | "VIDEO" | "AUDIO")}
@@ -347,33 +417,32 @@ function AddEvidenceCard({ defaultCaseId, onAdded }: { defaultCaseId: string; on
                     padding: "10px 12px",
                     borderRadius: 10,
                     background: "white",
-                }}
-              >
-                <option value="IMAGE">Image</option>
-                <option value="VIDEO">Video</option>
-                <option value="AUDIO">Audio</option>
-              </select>
-            </label>
+                  }}
+                >
+                  <option value="IMAGE">Image</option>
+                  <option value="VIDEO">Video</option>
+                  <option value="AUDIO">Audio</option>
+                </select>
+              </label>
 
-            <Input
-              label="URL"
-              value={url}
-              onChange={(e) => setUrl(e.target.value)}
-              placeholder="Upload a file or paste a URL..."
+              <Input
+                label="URL"
+                value={url}
+                onChange={(e) => setUrl(e.target.value)}
+                placeholder="Upload a file or paste a URL..."
+              />
+            </div>
+
+            <MediaUploader
+              mediaType={mediaType}
+              maxSizeMB={10}
+              onUploaded={(res) => {
+                // After upload, we auto-fill the URL
+                setUrl(res.url);
+              }}
             />
           </div>
-
-          <MediaUploader
-            mediaType={mediaType}
-            maxSizeMB={10}
-            onUploaded={(res) => {
-              // After upload, we auto-fill the URL
-              setUrl(res.url);
-            }}
-          />
-        </div>
-      ) : null}
-
+        ) : null}
 
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
           <Button disabled={!canSubmit} onClick={() => void submit()}>

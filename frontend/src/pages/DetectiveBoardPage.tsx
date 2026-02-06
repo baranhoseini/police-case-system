@@ -102,7 +102,8 @@ export default function DetectiveBoardPage() {
     }
 
     const already = links.some(
-      (l) => (l.from === linkModeFrom && l.to === toId) || (l.from === toId && l.to === linkModeFrom),
+      (l) =>
+        (l.from === linkModeFrom && l.to === toId) || (l.from === toId && l.to === linkModeFrom),
     );
     if (!already) {
       setLinks((prev) => [...prev, { id: genId("L"), from: linkModeFrom, to: toId }]);
@@ -119,7 +120,8 @@ export default function DetectiveBoardPage() {
       <div style={{ display: "grid", gap: 14 }}>
         <Card title="Controls">
           <p style={{ marginTop: 0, color: "var(--muted)" }}>
-            Drag notes to reposition them. Use <strong>Link</strong> then click another note to connect.
+            Drag notes to reposition them. Use <strong>Link</strong> then click another note to
+            connect.
           </p>
 
           <div style={{ display: "grid", gap: 12, gridTemplateColumns: "1fr 1fr auto" }}>
@@ -156,9 +158,8 @@ export default function DetectiveBoardPage() {
                 }}
                 disabled={exporting}
               >
-              {exporting ? "Exporting..." : "Export PNG"}
-            </Button>
-
+                {exporting ? "Exporting..." : "Export PNG"}
+              </Button>
             </div>
           </div>
 
