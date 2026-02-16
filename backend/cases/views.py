@@ -1,8 +1,10 @@
+from django.utils import timezone
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
+from rbac.models import UserRole
 from rbac.permissions import HasRole
 from .models import Case, Complaint, CrimeSceneReport
 from .serializers import (
@@ -152,7 +154,52 @@ class CaseViewSet(viewsets.ModelViewSet):
             **ser.validated_data,
         )
 
+        is_chief = UserRole.objects.filter(user=request.user, role__name="Chief").exists() or getattr(request.user, "is_superuser", False)
+        if is_chief:
+            report.is_approved = True
+            report.approved_by = request.user
+            report.approved_at = timezone.now()
+            report.save(update_fields=["is_approved", "approved_by", "approved_at"])
+
+            if case.status not in ["CLOSED", "INVALIDATED"]:
+                case.status = "OPEN"
+                case.save(update_fields=["status"])
+
         return Response(
             {"detail": "Crime scene report created", "crime_scene_id": report.id},
             status=status.HTTP_201_CREATED,
+        )
+
+    @action(
+        detail=True,
+        methods=["post"],
+        permission_classes=[HasRole.with_roles("Supervisor", "Chief", "Admin")],
+    )
+    def crime_scene_approve(self, request, pk=None):
+        case = self.get_object()
+        if not hasattr(case, "crime_scene"):
+            return Response({"detail": "No crime scene report"}, status=status.HTTP_404_NOT_FOUND)
+
+        if case.status == "INVALIDATED":
+            return Response({"detail": "Case is invalidated"}, status=status.HTTP_400_BAD_REQUEST)
+
+        report = case.crime_scene
+        if not report.is_approved:
+            report.is_approved = True
+            report.approved_by = request.user
+            report.approved_at = timezone.now()
+            report.save(update_fields=["is_approved", "approved_by", "approved_at"])
+
+        if case.status != "CLOSED":
+            case.status = "OPEN"
+            case.save(update_fields=["status"])
+
+        return Response(
+            {
+                "detail": "Crime scene approved",
+                "crime_scene_id": report.id,
+                "is_approved": report.is_approved,
+                "case_status": case.status,
+            },
+            status=status.HTTP_200_OK,
         )

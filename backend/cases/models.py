@@ -2,6 +2,7 @@ from django.conf import settings
 from django.db import models
 from django.utils import timezone
 
+
 class Case(models.Model):
     STATUS_CHOICES = [
         ("DRAFT", "Draft"),
@@ -42,4 +43,13 @@ class CrimeSceneReport(models.Model):
     report = models.TextField()
     witnessed_phone = models.CharField(max_length=20, blank=True, default="")
     witnessed_national_id = models.CharField(max_length=20, blank=True, default="")
+    is_approved = models.BooleanField(default=False)
+    approved_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="approved_crime_scenes",
+    )
+    approved_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(default=timezone.now)
