@@ -6,13 +6,23 @@ from rest_framework.response import Response
 
 from rbac.models import UserRole
 from rbac.permissions import HasRole
-from .models import Case, Complaint, CrimeSceneReport
+from .models import (
+    Case,
+    Complaint,
+    CrimeSceneReport,
+    DetectiveBoard,
+    DetectiveBoardItem,
+    DetectiveBoardLink,
+)
 from .serializers import (
     CaseSerializer,
     ComplaintCreateSerializer,
     ComplaintResubmitSerializer,
     CrimeSceneCreateSerializer,
     CaseFromComplaintSerializer,
+    DetectiveBoardSerializer,
+    DetectiveBoardItemSerializer,
+    DetectiveBoardLinkSerializer,
 )
 
 
@@ -23,6 +33,12 @@ class CaseViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         serializer.save(created_by=self.request.user, status="OPEN")
+
+    def _get_or_create_board(self, case, user):
+        try:
+            return case.detective_board
+        except DetectiveBoard.DoesNotExist:
+            return DetectiveBoard.objects.create(case=case, created_by=user)
 
     @action(detail=False, methods=["post"], permission_classes=[IsAuthenticated])
     def from_complaint(self, request):
@@ -203,3 +219,113 @@ class CaseViewSet(viewsets.ModelViewSet):
             },
             status=status.HTTP_200_OK,
         )
+
+    @action(
+        detail=True,
+        methods=["get"],
+        permission_classes=[HasRole.with_roles("Detective", "Sergent", "Captain", "Supervisor", "Chief", "Admin")],
+    )
+    def detective_board(self, request, pk=None):
+        case = self.get_object()
+        board = self._get_or_create_board(case, request.user)
+        return Response(DetectiveBoardSerializer(board, context={"request": request}).data, status=status.HTTP_200_OK)
+
+    @action(
+        detail=True,
+        methods=["post"],
+        url_path=r"detective_board/items",
+        permission_classes=[HasRole.with_roles("Detective", "Sergent", "Captain", "Supervisor", "Chief", "Admin")],
+    )
+    def detective_board_create_item(self, request, pk=None):
+        case = self.get_object()
+        board = self._get_or_create_board(case, request.user)
+
+        ser = DetectiveBoardItemSerializer(data=request.data)
+        ser.is_valid(raise_exception=True)
+        item = ser.save(board=board, created_by=request.user)
+
+        return Response(DetectiveBoardItemSerializer(item, context={"request": request}).data, status=status.HTTP_201_CREATED)
+
+    @action(
+        detail=True,
+        methods=["patch"],
+        url_path=r"detective_board/items/(?P<item_id>\d+)",
+        permission_classes=[HasRole.with_roles("Detective", "Sergent", "Captain", "Supervisor", "Chief", "Admin")],
+    )
+    def detective_board_update_item(self, request, pk=None, item_id=None):
+        case = self.get_object()
+        board = self._get_or_create_board(case, request.user)
+
+        try:
+            item = DetectiveBoardItem.objects.get(id=item_id, board=board)
+        except DetectiveBoardItem.DoesNotExist:
+            return Response({"detail": "Item not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        ser = DetectiveBoardItemSerializer(item, data=request.data, partial=True)
+        ser.is_valid(raise_exception=True)
+        item = ser.save()
+
+        return Response(DetectiveBoardItemSerializer(item, context={"request": request}).data, status=status.HTTP_200_OK)
+
+    @action(
+        detail=True,
+        methods=["delete"],
+        url_path=r"detective_board/items/(?P<item_id>\d+)",
+        permission_classes=[HasRole.with_roles("Detective", "Sergent", "Captain", "Supervisor", "Chief", "Admin")],
+    )
+    def detective_board_delete_item(self, request, pk=None, item_id=None):
+        case = self.get_object()
+        board = self._get_or_create_board(case, request.user)
+
+        try:
+            item = DetectiveBoardItem.objects.get(id=item_id, board=board)
+        except DetectiveBoardItem.DoesNotExist:
+            return Response({"detail": "Item not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        item.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+    @action(
+        detail=True,
+        methods=["post"],
+        url_path=r"detective_board/links",
+        permission_classes=[HasRole.with_roles("Detective", "Sergent", "Captain", "Supervisor", "Chief", "Admin")],
+    )
+    def detective_board_create_link(self, request, pk=None):
+        case = self.get_object()
+        board = self._get_or_create_board(case, request.user)
+
+        ser = DetectiveBoardLinkSerializer(data=request.data, context={"request": request, "board": board})
+        ser.is_valid(raise_exception=True)
+        link = ser.save()
+
+        return Response(
+            {
+                "id": link.id,
+                "source": link.source_id,
+                "target": link.target_id,
+                "label": link.label,
+                "meta": link.meta,
+                "created_by": link.created_by_id,
+                "created_at": link.created_at,
+            },
+            status=status.HTTP_201_CREATED,
+        )
+
+    @action(
+        detail=True,
+        methods=["delete"],
+        url_path=r"detective_board/links/(?P<link_id>\d+)",
+        permission_classes=[HasRole.with_roles("Detective", "Sergent", "Captain", "Supervisor", "Chief", "Admin")],
+    )
+    def detective_board_delete_link(self, request, pk=None, link_id=None):
+        case = self.get_object()
+        board = self._get_or_create_board(case, request.user)
+
+        try:
+            link = DetectiveBoardLink.objects.get(id=link_id, board=board)
+        except DetectiveBoardLink.DoesNotExist:
+            return Response({"detail": "Link not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        link.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
