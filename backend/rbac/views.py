@@ -1,6 +1,7 @@
 from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from drf_spectacular.utils import extend_schema
 
 from rbac.models import Role, UserRole
 from rbac.permissions import HasRole
@@ -15,6 +16,7 @@ from rbac.serializers import (
 class AssignRoleView(APIView):
     permission_classes = [HasRole.with_roles("Admin")]
 
+    @extend_schema(tags=["RBAC"], request=AssignRoleSerializer)
     def post(self, request):
         serializer = AssignRoleSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -25,10 +27,16 @@ class AssignRoleView(APIView):
 class RolesListCreateView(APIView):
     permission_classes = [HasRole.with_roles("Admin")]
 
+    @extend_schema(tags=["RBAC"], responses={200: RoleSerializer(many=True)})
     def get(self, request):
         roles = Role.objects.all().order_by("name")
         return Response(RoleSerializer(roles, many=True).data)
 
+    @extend_schema(
+        tags=["RBAC"],
+        request=RoleCreateUpdateSerializer,
+        responses={201: RoleSerializer},
+    )
     def post(self, request):
         serializer = RoleCreateUpdateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -39,6 +47,11 @@ class RolesListCreateView(APIView):
 class RoleDetailView(APIView):
     permission_classes = [HasRole.with_roles("Admin")]
 
+    @extend_schema(
+        tags=["RBAC"],
+        request=RoleCreateUpdateSerializer,
+        responses={200: RoleSerializer},
+    )
     def patch(self, request, role_id):
         role = Role.objects.filter(id=role_id).first()
         if not role:
@@ -49,6 +62,7 @@ class RoleDetailView(APIView):
         role = serializer.save()
         return Response(RoleSerializer(role).data)
 
+    @extend_schema(tags=["RBAC"], responses={204: None})
     def delete(self, request, role_id):
         role = Role.objects.filter(id=role_id).first()
         if not role:
@@ -64,11 +78,10 @@ class RoleDetailView(APIView):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
-
-
 class RevokeRoleView(APIView):
     permission_classes = [HasRole.with_roles("Admin")]
 
+    @extend_schema(tags=["RBAC"], request=RevokeRoleSerializer)
     def post(self, request):
         serializer = RevokeRoleSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -77,6 +90,7 @@ class RevokeRoleView(APIView):
 
 
 class MyRolesView(APIView):
+    @extend_schema(tags=["RBAC"], responses={200: RoleSerializer(many=True)})
     def get(self, request):
         if not request.user or not request.user.is_authenticated:
             return Response({"detail": "Authentication required"}, status=status.HTTP_401_UNAUTHORIZED)
