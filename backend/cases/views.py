@@ -8,6 +8,7 @@ from .models import Case, Complaint, CrimeSceneReport
 from .serializers import (
     CaseSerializer,
     ComplaintCreateSerializer,
+    ComplaintResubmitSerializer,
     CrimeSceneCreateSerializer,
     CaseFromComplaintSerializer,
 )
@@ -83,8 +84,49 @@ class CaseViewSet(viewsets.ModelViewSet):
         reason = request.data.get("reason", "") or "Invalid data"
         case.complaint.strike(reason=reason)
 
+        case.refresh_from_db()
+        if case.status != "INVALIDATED":
+            case.status = "DRAFT"
+            case.save(update_fields=["status"])
+
         return Response(
-            {"detail": "Strike applied", "revision_count": case.complaint.revision_count},
+            {
+                "detail": "Strike applied",
+                "revision_count": case.complaint.revision_count,
+                "case_status": case.status,
+            },
+            status=status.HTTP_200_OK,
+        )
+
+    @action(detail=True, methods=["post"], permission_classes=[IsAuthenticated])
+    def complaint_resubmit(self, request, pk=None):
+        case = self.get_object()
+        if not hasattr(case, "complaint"):
+            return Response({"detail": "No complaint"}, status=status.HTTP_404_NOT_FOUND)
+
+        if request.user != case.complaint.complainant and not request.user.is_staff:
+            return Response({"detail": "Not allowed"}, status=status.HTTP_403_FORBIDDEN)
+
+        if case.status == "INVALIDATED":
+            return Response({"detail": "Case is invalidated"}, status=status.HTTP_400_BAD_REQUEST)
+
+        ser = ComplaintResubmitSerializer(data=request.data)
+        ser.is_valid(raise_exception=True)
+
+        complaint = case.complaint
+        complaint.details = ser.validated_data["details"]
+        complaint.rejection_reason = None
+        complaint.save(update_fields=["details", "rejection_reason"])
+
+        case.status = "UNDER_REVIEW"
+        case.save(update_fields=["status"])
+
+        return Response(
+            {
+                "detail": "Complaint resubmitted",
+                "revision_count": complaint.revision_count,
+                "case_status": case.status,
+            },
             status=status.HTTP_200_OK,
         )
 
