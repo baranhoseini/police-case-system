@@ -1,0 +1,29 @@
+# macOS
+.DS_Store
+__MACOSX/
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+
+# venv
+.venv/
+venv/
+env/
+
+# Django local stuff
+db.sqlite3
+media/
+staticfiles/
+
+# Env files
+.env
+.env.*
+
+# Node
+node_modules/
+dist/
+build/
+coverage/
+.next/
