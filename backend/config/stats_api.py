@@ -5,8 +5,8 @@ from rest_framework.views import APIView
 
 from cases.models import Case
 from evidence.models import Evidence
-from suspects.models import Suspect
 from rewards.models import RewardTip
+from suspects.models import Suspect
 
 
 class StatsView(APIView):
@@ -32,7 +32,7 @@ class StatsView(APIView):
             "cases_by_status": cases_by_status,
             "evidence_total": Evidence.objects.count(),
             "suspects_total": Suspect.objects.count(),
-            "most_wanted_total": Suspect.objects.filter(is_most_wanted=True).count(),
+            "most_wanted_total": Suspect.objects.most_wanted().count(),
             "tips_total": RewardTip.objects.count(),
             "tips_by_status": tips_by_status,
         }
