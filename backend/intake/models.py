@@ -15,13 +15,15 @@ class Complaint(models.Model):
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
-        related_name="intake_complaints", 
+        related_name="intake_complaints",
     )
 
     payload = models.JSONField(default=dict, blank=True)
 
     status = models.CharField(
-        max_length=32, choices=ComplaintStatus.choices, default=ComplaintStatus.SUBMITTED
+        max_length=32,
+        choices=ComplaintStatus.choices,
+        default=ComplaintStatus.SUBMITTED,
     )
 
     bad_submission_count = models.PositiveSmallIntegerField(default=0)
@@ -30,14 +32,14 @@ class Complaint(models.Model):
     officer_error_message = models.TextField(blank=True, default="")
 
     cadet = models.ForeignKey(
-        settings.AUTH_USER_MODEL, 
+        settings.AUTH_USER_MODEL,
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
         related_name="cadet_assigned_intake_complaints",
     )
     officer = models.ForeignKey(
-        settings.AUTH_USER_MODEL,  
+        settings.AUTH_USER_MODEL,
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
@@ -48,7 +50,7 @@ class Complaint(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     def invalidate_if_needed(self) -> bool:
-        if self.bad_submission_count >= 3:
+        if self.bad_submission_count >= 3 and self.status != ComplaintStatus.INVALIDATED:
             self.status = ComplaintStatus.INVALIDATED
             return True
         return False
