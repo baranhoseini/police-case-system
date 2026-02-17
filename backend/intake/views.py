@@ -1,28 +1,51 @@
-# backend/intake/views.py
-from rest_framework import viewsets
+from django.db.models import Q
+from rest_framework import status
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
+from rest_framework.viewsets import ModelViewSet
 
-from .models import Complaint, ComplaintStatus
+from rbac.permissions import IsCadetRole, IsOfficerRole, user_has_role
+
+from .models import Complaint
 from .serializers import (
-    ComplaintSerializer,
-    ComplaintCreateSerializer,
-    ResubmitSerializer,
     CadetReviewSerializer,
+    ComplaintCreateSerializer,
+    ComplaintSerializer,
     OfficerReviewSerializer,
+    ResubmitSerializer,
 )
 
 
-class ComplaintViewSet(viewsets.ModelViewSet):
-    queryset = Complaint.objects.all().select_related("created_by", "cadet", "officer")
+class ComplaintViewSet(ModelViewSet):
+    queryset = Complaint.objects.all().order_by("-created_at")
+    serializer_class = ComplaintSerializer
     permission_classes = [IsAuthenticated]
+
+    def get_permissions(self):
+        if self.action in {"cadet_inbox", "cadet_review"}:
+            return [IsAuthenticated(), IsCadetRole()]
+        if self.action in {"officer_inbox", "officer_review"}:
+            return [IsAuthenticated(), IsOfficerRole()]
+        return [IsAuthenticated()]
 
     def get_queryset(self):
         user = self.request.user
-        if getattr(user, "is_staff", False) or getattr(user, "is_superuser", False):
-            return super().get_queryset()
-        return super().get_queryset().filter(created_by=user)
+        if user.is_superuser or user.is_staff or user_has_role(user, "ADMIN"):
+            return Complaint.objects.all().order_by("-created_at")
+
+        if user_has_role(user, "CADET"):
+            return Complaint.objects.filter(
+                Q(status__in=[Complaint.Status.SUBMITTED, Complaint.Status.OFFICER_DEFECT])
+                | Q(cadet=user)
+            ).order_by("-created_at")
+
+        if user_has_role(user, "OFFICER"):
+            return Complaint.objects.filter(
+                Q(status=Complaint.Status.CADET_APPROVED) | Q(officer=user)
+            ).order_by("-created_at")
+
+        return Complaint.objects.filter(created_by=user).order_by("-created_at")
 
     def get_serializer_class(self):
         if self.action == "create":
@@ -36,91 +59,112 @@ class ComplaintViewSet(viewsets.ModelViewSet):
         return ComplaintSerializer
 
     def perform_create(self, serializer):
-        serializer.save(created_by=self.request.user, status=ComplaintStatus.SUBMITTED)
+        serializer.save(created_by=self.request.user)
 
-    @action(detail=False, methods=["get"], url_path="cadet-inbox")
+    @action(detail=True, methods=["post"])
+    def resubmit(self, request, pk=None):
+        complaint = self.get_object()
+        is_adminish = (
+            request.user.is_superuser
+            or request.user.is_staff
+            or user_has_role(request.user, "ADMIN")
+        )
+        if complaint.created_by != request.user and not is_adminish:
+            return Response({"detail": "Not allowed."}, status=status.HTTP_403_FORBIDDEN)
+
+        if complaint.status == Complaint.Status.INVALIDATED:
+            return Response(
+                {"detail": "Complaint is invalidated and cannot be resubmitted."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        serializer = self.get_serializer(complaint, data=request.data)
+        serializer.is_valid(raise_exception=True)
+        serializer.save(
+            status=Complaint.Status.SUBMITTED,
+            cadet_error_message="",
+            officer_error_message="",
+        )
+        return Response(ComplaintSerializer(complaint).data)
+
+    @action(detail=False, methods=["get"])
     def cadet_inbox(self, request):
-        if not (request.user.is_staff or request.user.is_superuser):
-            return Response({"detail": "Forbidden."}, status=403)
         qs = Complaint.objects.filter(
-            status__in=[ComplaintStatus.SUBMITTED, ComplaintStatus.OFFICER_DEFECT]
-        ).select_related("created_by", "cadet", "officer")
+            status__in=[Complaint.Status.SUBMITTED, Complaint.Status.OFFICER_DEFECT]
+        ).filter(Q(cadet__isnull=True) | Q(cadet=request.user)).order_by("-created_at")
         return Response(ComplaintSerializer(qs, many=True).data)
 
-    @action(detail=False, methods=["get"], url_path="officer-inbox")
-    def officer_inbox(self, request):
-        if not (request.user.is_staff or request.user.is_superuser):
-            return Response({"detail": "Forbidden."}, status=403)
-        qs = Complaint.objects.filter(
-            status=ComplaintStatus.CADET_APPROVED
-        ).select_related("created_by", "cadet", "officer")
-        return Response(ComplaintSerializer(qs, many=True).data)
-
-    @action(detail=True, methods=["post"], url_path="cadet-review")
+    @action(detail=True, methods=["post"])
     def cadet_review(self, request, pk=None):
         complaint = self.get_object()
-        ser = self.get_serializer(data=request.data)
-        ser.is_valid(raise_exception=True)
 
-        if complaint.status not in [ComplaintStatus.SUBMITTED, ComplaintStatus.OFFICER_DEFECT]:
-            return Response({"detail": "Not in cadet-review state."}, status=400)
+        is_adminish = (
+            request.user.is_superuser
+            or request.user.is_staff
+            or user_has_role(request.user, "ADMIN")
+        )
+        if complaint.cadet and complaint.cadet_id != request.user.id and not is_adminish:
+            return Response({"detail": "Not allowed."}, status=status.HTTP_403_FORBIDDEN)
 
-        if not (request.user.is_staff or request.user.is_superuser):
-            return Response({"detail": "Forbidden."}, status=403)
+        if complaint.status not in [Complaint.Status.SUBMITTED, Complaint.Status.OFFICER_DEFECT]:
+            return Response(
+                {"detail": f"Cannot cadet-review complaint in status {complaint.status}."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
 
         complaint.cadet = request.user
 
-        if ser.validated_data["action"] == "approve":
-            complaint.status = ComplaintStatus.CADET_APPROVED
+        if serializer.validated_data["status"] == "approve":
+            complaint.status = Complaint.Status.CADET_APPROVED
             complaint.cadet_error_message = ""
         else:
-            complaint.status = ComplaintStatus.NEEDS_FIX
-            complaint.cadet_error_message = ser.validated_data.get("error_message", "") or "Information is incomplete or incorrect."
+            complaint.status = Complaint.Status.NEEDS_FIX
             complaint.bad_submission_count += 1
+            complaint.cadet_error_message = serializer.validated_data.get("error_message", "")
             complaint.invalidate_if_needed()
 
         complaint.save()
         return Response(ComplaintSerializer(complaint).data)
 
-    @action(detail=True, methods=["post"], url_path="resubmit")
-    def resubmit(self, request, pk=None):
-        complaint = self.get_object()
+    @action(detail=False, methods=["get"])
+    def officer_inbox(self, request):
+        qs = Complaint.objects.filter(status=Complaint.Status.CADET_APPROVED).filter(
+            Q(officer__isnull=True) | Q(officer=request.user)
+        ).order_by("-created_at")
+        return Response(ComplaintSerializer(qs, many=True).data)
 
-        if complaint.status == ComplaintStatus.INVALIDATED:
-            return Response({"detail": "This complaint is invalidated and cannot be resubmitted."}, status=400)
-
-        if complaint.status != ComplaintStatus.NEEDS_FIX:
-            return Response({"detail": "Not in resubmission state."}, status=400)
-
-        if complaint.created_by_id != request.user.id:
-            return Response({"detail": "Forbidden."}, status=403)
-
-        ser = self.get_serializer(instance=complaint, data=request.data)
-        ser.is_valid(raise_exception=True)
-
-        ser.save(status=ComplaintStatus.SUBMITTED, cadet_error_message="")
-        return Response(ComplaintSerializer(complaint).data)
-
-    @action(detail=True, methods=["post"], url_path="officer-review")
+    @action(detail=True, methods=["post"])
     def officer_review(self, request, pk=None):
         complaint = self.get_object()
-        ser = self.get_serializer(data=request.data)
-        ser.is_valid(raise_exception=True)
 
-        if complaint.status != ComplaintStatus.CADET_APPROVED:
-            return Response({"detail": "Not in officer-review state."}, status=400)
+        is_adminish = (
+            request.user.is_superuser
+            or request.user.is_staff
+            or user_has_role(request.user, "ADMIN")
+        )
+        if complaint.officer and complaint.officer_id != request.user.id and not is_adminish:
+            return Response({"detail": "Not allowed."}, status=status.HTTP_403_FORBIDDEN)
 
-        if not (request.user.is_staff or request.user.is_superuser):
-            return Response({"detail": "Forbidden."}, status=403)
+        if complaint.status != Complaint.Status.CADET_APPROVED:
+            return Response(
+                {"detail": f"Cannot officer-review complaint in status {complaint.status}."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
 
         complaint.officer = request.user
 
-        if ser.validated_data["action"] == "defect":
-            complaint.status = ComplaintStatus.OFFICER_DEFECT
-            complaint.officer_error_message = ser.validated_data.get("error_message", "") or "Requires cadet re-check."
-        else:
-            complaint.status = ComplaintStatus.OFFICER_APPROVED
+        if serializer.validated_data["status"] == "approve":
+            complaint.status = Complaint.Status.OFFICER_APPROVED
             complaint.officer_error_message = ""
+        else:
+            complaint.status = Complaint.Status.OFFICER_DEFECT
+            complaint.officer_error_message = serializer.validated_data.get("error_message", "")
 
         complaint.save()
         return Response(ComplaintSerializer(complaint).data)
