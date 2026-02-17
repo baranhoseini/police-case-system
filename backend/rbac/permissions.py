@@ -1,25 +1,31 @@
+from __future__ import annotations
+
 from rest_framework.permissions import BasePermission
+
 from rbac.models import UserRole
 
+
+def user_has_role(user, *roles: str) -> bool:
+    if not user or not user.is_authenticated:
+        return False
+    return UserRole.objects.filter(user=user, role__name__in=roles).exists()
+
+
 class HasRole(BasePermission):
-    required_roles = []
+    allowed_roles: list[str] = []
+
+    def has_permission(self, request, view) -> bool:
+        return user_has_role(request.user, *self.allowed_roles)
 
     @classmethod
-    def with_roles(cls, *roles):
-        class _HasRole(cls):
-            required_roles = list(roles)
-        return _HasRole
+    def with_roles(cls, *roles: str):
+        class RolePermission(cls):
+            allowed_roles = list(roles)
 
-    def has_permission(self, request, view):
-        if not request.user or not request.user.is_authenticated:
-            return False
+        RolePermission.__name__ = f"{cls.__name__}_{'_'.join(roles)}"
+        RolePermission.__qualname__ = RolePermission.__name__
+        return RolePermission
 
-        # Bootstrap: superuser can access admin-only endpoints
 
-        if getattr(request.user, "is_superuser", False):
-            return True
-
-        return UserRole.objects.filter(
-            user=request.user,
-            role__name__in=self.required_roles
-        ).exists()
+IsCadetRole = HasRole.with_roles("Cadet", "Admin")
+IsOfficerRole = HasRole.with_roles("Officer", "Admin")
