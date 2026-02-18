@@ -5,7 +5,8 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from rbac.models import UserRole
-from rbac.permissions import HasRole
+from rbac.permissions import HasRole, user_has_role
+
 from .models import (
     Case,
     Complaint,
@@ -13,6 +14,11 @@ from .models import (
     DetectiveBoard,
     DetectiveBoardItem,
     DetectiveBoardLink,
+    SolveRequest,
+    Interrogation,
+    CaptainDecision,
+    Trial,
+    CaseNotification,
 )
 from .serializers import (
     CaseSerializer,
@@ -23,6 +29,17 @@ from .serializers import (
     DetectiveBoardSerializer,
     DetectiveBoardItemSerializer,
     DetectiveBoardLinkSerializer,
+    SolveSubmitSerializer,
+    SolveReviewSerializer,
+    SolveRequestSerializer,
+    InterrogationScoreSerializer,
+    InterrogationSerializer,
+    CaptainDecisionCreateSerializer,
+    ChiefApprovalSerializer,
+    CaptainDecisionSerializer,
+    TrialVerdictSerializer,
+    TrialSerializer,
+    CaseNotificationSerializer,
 )
 
 
@@ -70,10 +87,7 @@ class CaseViewSet(viewsets.ModelViewSet):
     def create_complaint(self, request, pk=None):
         case = self.get_object()
         if hasattr(case, "complaint"):
-            return Response(
-                {"detail": "Complaint already exists"},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+            return Response({"detail": "Complaint already exists"}, status=status.HTTP_400_BAD_REQUEST)
 
         ser = ComplaintCreateSerializer(data=request.data)
         ser.is_valid(raise_exception=True)
@@ -156,10 +170,7 @@ class CaseViewSet(viewsets.ModelViewSet):
     def create_crime_scene(self, request, pk=None):
         case = self.get_object()
         if hasattr(case, "crime_scene"):
-            return Response(
-                {"detail": "Crime scene report already exists"},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+            return Response({"detail": "Crime scene report already exists"}, status=status.HTTP_400_BAD_REQUEST)
 
         ser = CrimeSceneCreateSerializer(data=request.data)
         ser.is_valid(raise_exception=True)
@@ -220,6 +231,9 @@ class CaseViewSet(viewsets.ModelViewSet):
             status=status.HTTP_200_OK,
         )
 
+    # -----------------------
+    # Detective Board
+    # -----------------------
     @action(
         detail=True,
         methods=["get"],
@@ -329,3 +343,264 @@ class CaseViewSet(viewsets.ModelViewSet):
 
         link.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+    # -----------------------
+    # Step 2: Flow Endpoints
+    # -----------------------
+
+    @action(
+        detail=True,
+        methods=["post"],
+        url_path="solve/submit",
+        permission_classes=[HasRole.with_roles("Detective", "Admin")],
+    )
+    def solve_submit(self, request, pk=None):
+        case = self.get_object()
+        if case.status in ["CLOSED", "INVALIDATED"]:
+            return Response({"detail": "Case is not active."}, status=status.HTTP_400_BAD_REQUEST)
+
+        if SolveRequest.objects.filter(case=case, status="SUBMITTED").exists():
+            return Response({"detail": "There is already a pending solve request."}, status=status.HTTP_400_BAD_REQUEST)
+
+        ser = SolveSubmitSerializer(data=request.data)
+        ser.is_valid(raise_exception=True)
+
+        sr = SolveRequest.objects.create(
+            case=case,
+            suspect_ids=list(dict.fromkeys(ser.validated_data["suspect_ids"])),
+            note=ser.validated_data.get("note", ""),
+            status="SUBMITTED",
+            submitted_by=request.user,
+        )
+        return Response(SolveRequestSerializer(sr).data, status=status.HTTP_201_CREATED)
+
+    @action(
+        detail=True,
+        methods=["post"],
+        url_path="solve/review",
+        permission_classes=[HasRole.with_roles("Sergent", "Admin")],
+    )
+    def solve_review(self, request, pk=None):
+        case = self.get_object()
+        sr = SolveRequest.objects.filter(case=case, status="SUBMITTED").order_by("-id").first()
+        if not sr:
+            return Response({"detail": "No pending solve request."}, status=status.HTTP_404_NOT_FOUND)
+
+        ser = SolveReviewSerializer(data=request.data)
+        ser.is_valid(raise_exception=True)
+
+        decision = ser.validated_data["decision"]
+        sr.reviewed_by = request.user
+        sr.reviewed_at = timezone.now()
+        sr.review_comment = ser.validated_data.get("comment", "")
+
+        if decision == "approve":
+            sr.status = "APPROVED"
+        else:
+            sr.status = "REJECTED"
+
+        sr.save(update_fields=["status", "reviewed_by", "reviewed_at", "review_comment"])
+        return Response(SolveRequestSerializer(sr).data, status=status.HTTP_200_OK)
+
+    @action(
+        detail=True,
+        methods=["post"],
+        url_path=r"interrogations/(?P<suspect_id>\d+)/detective_score",
+        permission_classes=[HasRole.with_roles("Detective", "Admin")],
+    )
+    def interrogation_detective_score(self, request, pk=None, suspect_id=None):
+        case = self.get_object()
+        if not SolveRequest.objects.filter(case=case, status="APPROVED").exists():
+            return Response({"detail": "Solve request must be approved first."}, status=status.HTTP_400_BAD_REQUEST)
+
+        ser = InterrogationScoreSerializer(data=request.data)
+        ser.is_valid(raise_exception=True)
+
+        obj, _ = Interrogation.objects.get_or_create(case=case, suspect_id=int(suspect_id))
+        obj.detective_score = ser.validated_data["score"]
+        obj.save(update_fields=["detective_score", "updated_at"])
+        return Response(InterrogationSerializer(obj).data, status=status.HTTP_200_OK)
+
+    @action(
+        detail=True,
+        methods=["post"],
+        url_path=r"interrogations/(?P<suspect_id>\d+)/sergent_score",
+        permission_classes=[HasRole.with_roles("Sergent", "Admin")],
+    )
+    def interrogation_sergent_score(self, request, pk=None, suspect_id=None):
+        case = self.get_object()
+        if not SolveRequest.objects.filter(case=case, status="APPROVED").exists():
+            return Response({"detail": "Solve request must be approved first."}, status=status.HTTP_400_BAD_REQUEST)
+
+        ser = InterrogationScoreSerializer(data=request.data)
+        ser.is_valid(raise_exception=True)
+
+        obj, _ = Interrogation.objects.get_or_create(case=case, suspect_id=int(suspect_id))
+        obj.sergent_score = ser.validated_data["score"]
+        obj.save(update_fields=["sergent_score", "updated_at"])
+        return Response(InterrogationSerializer(obj).data, status=status.HTTP_200_OK)
+
+    @action(
+        detail=True,
+        methods=["post"],
+        url_path="captain/decision",
+        permission_classes=[HasRole.with_roles("Captain", "Admin")],
+    )
+    def captain_decision(self, request, pk=None):
+        case = self.get_object()
+        if case.status in ["CLOSED", "INVALIDATED"]:
+            return Response({"detail": "Case is not active."}, status=status.HTTP_400_BAD_REQUEST)
+
+        ser = CaptainDecisionCreateSerializer(data=request.data)
+        ser.is_valid(raise_exception=True)
+
+        decision = ser.validated_data["decision"]
+        comment = ser.validated_data.get("comment", "")
+
+        obj, created = CaptainDecision.objects.get_or_create(
+            case=case,
+            defaults={
+                "decision": decision,
+                "comment": comment,
+                "decided_by": request.user,
+                "decided_at": timezone.now(),
+            },
+        )
+        if not created:
+            obj.decision = decision
+            obj.comment = comment
+            obj.decided_by = request.user
+            obj.decided_at = timezone.now()
+            # reset chief approval if decision changed
+            obj.chief_approved = None
+            obj.chief_by = None
+            obj.chief_at = None
+            obj.chief_comment = ""
+            obj.save()
+
+        return Response(CaptainDecisionSerializer(obj).data, status=status.HTTP_200_OK)
+
+    @action(
+        detail=True,
+        methods=["post"],
+        url_path="chief/approve",
+        permission_classes=[HasRole.with_roles("Chief", "Admin")],
+    )
+    def chief_approve(self, request, pk=None):
+        case = self.get_object()
+        if not hasattr(case, "captain_decision"):
+            return Response({"detail": "No captain decision yet."}, status=status.HTTP_400_BAD_REQUEST)
+
+        cd = case.captain_decision
+        if cd.decision != "SEND_TO_TRIAL":
+            return Response({"detail": "Chief approval is only needed for SEND_TO_TRIAL."}, status=status.HTTP_400_BAD_REQUEST)
+
+        if not case.is_critical:
+            return Response({"detail": "Chief approval only required for critical cases."}, status=status.HTTP_400_BAD_REQUEST)
+
+        ser = ChiefApprovalSerializer(data=request.data)
+        ser.is_valid(raise_exception=True)
+
+        cd.chief_approved = bool(ser.validated_data["approve"])
+        cd.chief_by = request.user
+        cd.chief_at = timezone.now()
+        cd.chief_comment = ser.validated_data.get("comment", "")
+        cd.save(update_fields=["chief_approved", "chief_by", "chief_at", "chief_comment"])
+        return Response(CaptainDecisionSerializer(cd).data, status=status.HTTP_200_OK)
+
+    @action(
+        detail=True,
+        methods=["post"],
+        url_path="trial/verdict",
+        permission_classes=[HasRole.with_roles("Judge", "Chief", "Admin")],
+    )
+    def trial_verdict(self, request, pk=None):
+        case = self.get_object()
+
+        if case.status in ["CLOSED", "INVALIDATED"]:
+            return Response({"detail": "Case is not active."}, status=status.HTTP_400_BAD_REQUEST)
+
+        if not hasattr(case, "captain_decision") or case.captain_decision.decision != "SEND_TO_TRIAL":
+            return Response({"detail": "Case is not sent to trial by Captain."}, status=status.HTTP_400_BAD_REQUEST)
+
+        if case.is_critical:
+            if case.captain_decision.chief_approved is not True:
+                return Response({"detail": "Chief approval is required for critical cases."}, status=status.HTTP_400_BAD_REQUEST)
+
+        ser = TrialVerdictSerializer(data=request.data)
+        ser.is_valid(raise_exception=True)
+
+        verdict = ser.validated_data["verdict"]
+        title = ser.validated_data.get("punishment_title", "")
+        desc = ser.validated_data.get("punishment_description", "")
+
+        trial, created = Trial.objects.get_or_create(
+            case=case,
+            defaults={
+                "verdict": verdict,
+                "punishment_title": title,
+                "punishment_description": desc,
+                "judged_by": request.user,
+                "judged_at": timezone.now(),
+            },
+        )
+        if not created:
+            trial.verdict = verdict
+            trial.punishment_title = title
+            trial.punishment_description = desc
+            trial.judged_by = request.user
+            trial.judged_at = timezone.now()
+            trial.save()
+
+        case.status = "CLOSED"
+        case.save(update_fields=["status"])
+
+        return Response(TrialSerializer(trial).data, status=status.HTTP_200_OK)
+
+    @action(
+        detail=True,
+        methods=["get"],
+        url_path="dossier",
+        permission_classes=[HasRole.with_roles("Detective", "Sergent", "Captain", "Supervisor", "Chief", "Admin")],
+    )
+    def dossier(self, request, pk=None):
+        case = self.get_object()
+
+        solve_latest = case.solve_requests.order_by("-id").first()
+        interrogations = case.interrogations.order_by("suspect_id")
+        captain_decision = getattr(case, "captain_decision", None)
+        trial = getattr(case, "trial", None)
+
+        payload = {
+            "case": CaseSerializer(case, context={"request": request}).data,
+            "complaint": getattr(case, "complaint", None).details if hasattr(case, "complaint") else None,
+            "crime_scene": {
+                "exists": hasattr(case, "crime_scene"),
+                "is_approved": case.crime_scene.is_approved if hasattr(case, "crime_scene") else None,
+                "report": case.crime_scene.report if hasattr(case, "crime_scene") else None,
+            },
+            "solve_request": SolveRequestSerializer(solve_latest).data if solve_latest else None,
+            "interrogations": InterrogationSerializer(interrogations, many=True).data,
+            "captain_decision": CaptainDecisionSerializer(captain_decision).data if captain_decision else None,
+            "trial": TrialSerializer(trial).data if trial else None,
+        }
+        return Response(payload, status=status.HTTP_200_OK)
+
+    # Notifications (under /api/cases/notifications/)
+    @action(detail=False, methods=["get"], url_path="notifications", permission_classes=[IsAuthenticated])
+    def notifications(self, request):
+        qs = CaseNotification.objects.filter(recipient=request.user).order_by("-created_at")
+        return Response(CaseNotificationSerializer(qs, many=True).data, status=status.HTTP_200_OK)
+
+    @action(detail=False, methods=["post"], url_path=r"notifications/(?P<notif_id>\d+)/mark_read", permission_classes=[IsAuthenticated])
+    def notification_mark_read(self, request, notif_id=None):
+        try:
+            n = CaseNotification.objects.get(id=int(notif_id), recipient=request.user)
+        except CaseNotification.DoesNotExist:
+            return Response({"detail": "Notification not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        if n.read_at is None:
+            n.read_at = timezone.now()
+            n.save(update_fields=["read_at"])
+
+        return Response(CaseNotificationSerializer(n).data, status=status.HTTP_200_OK)
