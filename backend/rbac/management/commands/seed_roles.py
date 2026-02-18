@@ -8,7 +8,17 @@ DEFAULT_ROLES = [
     ("Cadet", "Cadet access"),
     ("Supervisor", "Supervisor access"),
     ("Chief", "Chief access"),
+
+    # Missing roles used in endpoints
+    ("Patrol", "Patrol officer access"),
+    ("Captain", "Captain access"),
+    ("Judge", "Judge access"),
+
+    # Spelling variants currently used in code
+    ("Sergent", "Sergeant access"),
+    ("Sergeant", "Sergeant access"),
 ]
+
 
 class Command(BaseCommand):
     help = "Create default roles if they do not exist."
