@@ -18,6 +18,15 @@ class Complaint(models.Model):
         related_name="intake_complaints",
     )
 
+    # Link to the actual case created after approvals.
+    case = models.ForeignKey(
+        "cases.Case",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="intake_complaints",
+    )
+
     payload = models.JSONField(default=dict, blank=True)
 
     status = models.CharField(

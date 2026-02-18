@@ -3,6 +3,7 @@ from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
+from django.db import transaction
 
 from rbac.models import UserRole
 from rbac.permissions import HasRole, user_has_role
@@ -19,12 +20,15 @@ from .models import (
     CaptainDecision,
     Trial,
     CaseNotification,
+    CaseComplainant,
 )
 from .serializers import (
     CaseSerializer,
+    CaseComplainantSerializer,
     ComplaintCreateSerializer,
     ComplaintResubmitSerializer,
     CrimeSceneCreateSerializer,
+    CaseFromCrimeSceneSerializer,
     CaseFromComplaintSerializer,
     DetectiveBoardSerializer,
     DetectiveBoardItemSerializer,
@@ -49,7 +53,13 @@ class CaseViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
 
     def perform_create(self, serializer):
-        serializer.save(created_by=self.request.user, status="OPEN")
+        case = serializer.save(created_by=self.request.user, status="OPEN")
+        CaseComplainant.objects.get_or_create(
+            case=case,
+            user=self.request.user,
+            defaults={"status": CaseComplainant.STATUS_APPROVED},
+        )
+        CaseNotification.objects.create(case=case, recipient=self.request.user, message="Case created")
 
     def _get_or_create_board(self, case, user):
         try:
@@ -75,6 +85,8 @@ class CaseViewSet(viewsets.ModelViewSet):
             details=ser.validated_data["details"],
         )
 
+        CaseNotification.objects.create(case=case, recipient=request.user, message="Complaint submitted")
+
         return Response(
             {
                 "case": CaseSerializer(case, context={"request": request}).data,
@@ -82,6 +94,106 @@ class CaseViewSet(viewsets.ModelViewSet):
             },
             status=status.HTTP_201_CREATED,
         )
+
+    @action(detail=False, methods=["post"], url_path="from-crime-scene")
+    def from_crime_scene(self, request):
+        serializer = CaseFromCrimeSceneSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+
+        if not any(
+            user_has_role(request.user, r)
+            for r in ["Officer", "Patrol", "Detective", "Sergeant", "Supervisor", "Captain", "Chief", "Admin"]
+        ):
+            return Response({"detail": "Forbidden"}, status=status.HTTP_403_FORBIDDEN)
+
+        is_chief = user_has_role(request.user, "Chief") or user_has_role(request.user, "Admin") or getattr(request.user, "is_superuser", False)
+
+        with transaction.atomic():
+            case = Case.objects.create(
+                title=data["title"],
+                description=data.get("description", ""),
+                crime_level=data["crime_level"],
+                created_by=request.user,
+                status="OPEN" if is_chief else "UNDER_REVIEW",
+            )
+
+            CrimeSceneReport.objects.create(
+                case=case,
+                reporter=request.user,
+                report=data["report"],
+                witnessed_phone=data.get("witnessed_phone", ""),
+                witnessed_national_id=data.get("witnessed_national_id", ""),
+                is_approved=True if is_chief else False,
+                approved_by=request.user if is_chief else None,
+                approved_at=timezone.now() if is_chief else None,
+            )
+
+            CaseComplainant.objects.get_or_create(
+                case=case,
+                user=request.user,
+                defaults={"status": CaseComplainant.STATUS_APPROVED},
+            )
+
+            CaseNotification.objects.create(
+                case=case,
+                recipient=request.user,
+                message="Crime scene report submitted",
+            )
+
+        return Response(CaseSerializer(case, context={"request": request}).data, status=status.HTTP_201_CREATED)
+
+    @action(detail=True, methods=["get", "post"], url_path="complainants")
+    def complainants(self, request, pk=None):
+        case = self.get_object()
+
+        if request.method.lower() == "get":
+            qs = case.complainant_links.select_related("user", "reviewed_by").all()
+            return Response(CaseComplainantSerializer(qs, many=True).data)
+
+        user_id = request.data.get("user_id")
+        if not user_id:
+            return Response({"detail": "user_id is required"}, status=status.HTTP_400_BAD_REQUEST)
+
+        allowed = (
+            case.created_by_id == request.user.id
+            or user_has_role(request.user, "Cadet")
+            or user_has_role(request.user, "Admin")
+            or case.complainant_links.filter(user=request.user, status=CaseComplainant.STATUS_APPROVED).exists()
+        )
+        if not allowed:
+            return Response({"detail": "Forbidden"}, status=status.HTTP_403_FORBIDDEN)
+
+        link, created = CaseComplainant.objects.get_or_create(case=case, user_id=user_id)
+        if not created:
+            return Response({"detail": "Already exists"}, status=status.HTTP_400_BAD_REQUEST)
+        return Response(CaseComplainantSerializer(link).data, status=status.HTTP_201_CREATED)
+
+    @action(
+        detail=True,
+        methods=["post"],
+        url_path="complainants/(?P<link_id>[^/.]+)/review",
+        permission_classes=[HasRole.with_roles("Cadet", "Admin")],
+    )
+    def review_complainant(self, request, pk=None, link_id=None):
+        case = self.get_object()
+        try:
+            link = case.complainant_links.get(id=link_id)
+        except CaseComplainant.DoesNotExist:
+            return Response({"detail": "Not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        action_value = request.data.get("action")
+        message = request.data.get("message", "")
+
+        if action_value not in ["approve", "reject"]:
+            return Response({"detail": "action must be approve or reject"}, status=status.HTTP_400_BAD_REQUEST)
+
+        link.status = CaseComplainant.STATUS_APPROVED if action_value == "approve" else CaseComplainant.STATUS_REJECTED
+        link.cadet_message = message
+        link.reviewed_by = request.user
+        link.reviewed_at = timezone.now()
+        link.save(update_fields=["status", "cadet_message", "reviewed_by", "reviewed_at"])
+        return Response(CaseComplainantSerializer(link).data)
 
     @action(detail=True, methods=["post"], permission_classes=[IsAuthenticated])
     def create_complaint(self, request, pk=None):
@@ -97,6 +209,8 @@ class CaseViewSet(viewsets.ModelViewSet):
             complainant=request.user,
             details=ser.validated_data["details"],
         )
+
+        CaseNotification.objects.create(case=case, recipient=request.user, message="Complaint created")
 
         return Response(
             {"detail": "Complaint created", "complaint_id": complaint.id},
@@ -153,6 +267,8 @@ class CaseViewSet(viewsets.ModelViewSet):
         case.status = "UNDER_REVIEW"
         case.save(update_fields=["status"])
 
+        CaseNotification.objects.create(case=case, recipient=request.user, message="Complaint resubmitted")
+
         return Response(
             {
                 "detail": "Complaint resubmitted",
@@ -192,6 +308,8 @@ class CaseViewSet(viewsets.ModelViewSet):
                 case.status = "OPEN"
                 case.save(update_fields=["status"])
 
+        CaseNotification.objects.create(case=case, recipient=request.user, message="Crime scene report created")
+
         return Response(
             {"detail": "Crime scene report created", "crime_scene_id": report.id},
             status=status.HTTP_201_CREATED,
@@ -221,6 +339,8 @@ class CaseViewSet(viewsets.ModelViewSet):
             case.status = "OPEN"
             case.save(update_fields=["status"])
 
+        CaseNotification.objects.create(case=case, recipient=request.user, message="Crime scene approved")
+
         return Response(
             {
                 "detail": "Crime scene approved",
@@ -231,9 +351,6 @@ class CaseViewSet(viewsets.ModelViewSet):
             status=status.HTTP_200_OK,
         )
 
-    # -----------------------
-    # Detective Board
-    # -----------------------
     @action(
         detail=True,
         methods=["get"],
@@ -343,10 +460,6 @@ class CaseViewSet(viewsets.ModelViewSet):
 
         link.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
-
-    # -----------------------
-    # Step 2: Flow Endpoints
-    # -----------------------
 
     @action(
         detail=True,
@@ -471,7 +584,6 @@ class CaseViewSet(viewsets.ModelViewSet):
             obj.comment = comment
             obj.decided_by = request.user
             obj.decided_at = timezone.now()
-            # reset chief approval if decision changed
             obj.chief_approved = None
             obj.chief_by = None
             obj.chief_at = None
@@ -586,7 +698,6 @@ class CaseViewSet(viewsets.ModelViewSet):
         }
         return Response(payload, status=status.HTTP_200_OK)
 
-    # Notifications (under /api/cases/notifications/)
     @action(detail=False, methods=["get"], url_path="notifications", permission_classes=[IsAuthenticated])
     def notifications(self, request):
         qs = CaseNotification.objects.filter(recipient=request.user).order_by("-created_at")

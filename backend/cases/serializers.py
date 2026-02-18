@@ -11,6 +11,7 @@ from .models import (
     CaptainDecision,
     Trial,
     CaseNotification,
+    CaseComplainant,
 )
 
 
@@ -31,6 +32,24 @@ class CrimeSceneCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = CrimeSceneReport
         fields = ("report", "witnessed_phone", "witnessed_national_id")
+
+
+
+
+class CaseFromCrimeSceneSerializer(serializers.Serializer):
+    title = serializers.CharField(max_length=200)
+    description = serializers.CharField(required=False, allow_blank=True)
+    crime_level = serializers.IntegerField(min_value=1, max_value=4)
+    report = serializers.CharField()
+    witnessed_phone = serializers.CharField(required=False, allow_blank=True)
+    witnessed_national_id = serializers.CharField(required=False, allow_blank=True)
+
+
+class CaseComplainantSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = CaseComplainant
+        fields = ("id", "case", "user", "status", "cadet_message", "reviewed_by", "reviewed_at", "created_at")
+        read_only_fields = ("id", "case", "reviewed_by", "reviewed_at", "created_at")
 
 
 class CaseFromComplaintSerializer(serializers.Serializer):

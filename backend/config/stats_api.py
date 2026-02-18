@@ -30,10 +30,14 @@ class StatsView(APIView):
         data = {
             "cases_total": Case.objects.count(),
             "cases_by_status": cases_by_status,
+            "cases_open": Case.objects.filter(status="OPEN").count(),
+            "cases_closed": Case.objects.filter(status="CLOSED").count(),
             "evidence_total": Evidence.objects.count(),
             "suspects_total": Suspect.objects.count(),
             "most_wanted_total": Suspect.objects.most_wanted().count(),
+            "most_wanted": Suspect.objects.most_wanted().count(),
             "tips_total": RewardTip.objects.count(),
             "tips_by_status": tips_by_status,
+            "tips_pending": RewardTip.objects.filter(status=RewardTip.STATUS_SUBMITTED).count(),
         }
         return Response(data)

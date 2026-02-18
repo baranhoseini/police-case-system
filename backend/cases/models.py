@@ -43,6 +43,44 @@ class Case(models.Model):
         return self.crime_level == 4
 
 
+
+
+class CaseComplainant(models.Model):
+    STATUS_PENDING = "PENDING"
+    STATUS_APPROVED = "APPROVED"
+    STATUS_REJECTED = "REJECTED"
+
+    STATUS_CHOICES = [
+        (STATUS_PENDING, "Pending"),
+        (STATUS_APPROVED, "Approved"),
+        (STATUS_REJECTED, "Rejected"),
+    ]
+
+    case = models.ForeignKey("cases.Case", on_delete=models.CASCADE, related_name="complainant_links")
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="case_complainant_links")
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default=STATUS_PENDING)
+    cadet_message = models.TextField(blank=True)
+    reviewed_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="reviewed_case_complainants",
+    )
+    reviewed_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ("case", "user")
+        indexes = [
+            models.Index(fields=["case", "status"]),
+            models.Index(fields=["user", "status"]),
+        ]
+
+    def __str__(self) -> str:
+        return f"CaseComplainant(case_id={self.case_id}, user_id={self.user_id}, status={self.status})"
+
+
 class Complaint(models.Model):
     case = models.OneToOneField(Case, on_delete=models.CASCADE, related_name="complaint", null=True, blank=True)
     complainant = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="complaints")

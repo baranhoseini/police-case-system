@@ -12,6 +12,13 @@ class EvidenceViewSet(viewsets.ModelViewSet):
     serializer_class = EvidenceSerializer
     permission_classes = [IsAuthenticated]
 
+    def get_queryset(self):
+        qs = super().get_queryset()
+        case_id = self.request.query_params.get("case_id") or self.request.query_params.get("case")
+        if case_id:
+            qs = qs.filter(case_id=case_id)
+        return qs
+
     def perform_create(self, serializer):
         evidence = serializer.save(created_by=self.request.user)
 
