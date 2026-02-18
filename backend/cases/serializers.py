@@ -6,13 +6,18 @@ from .models import (
     DetectiveBoard,
     DetectiveBoardItem,
     DetectiveBoardLink,
+    SolveRequest,
+    Interrogation,
+    CaptainDecision,
+    Trial,
+    CaseNotification,
 )
 
 
 class CaseSerializer(serializers.ModelSerializer):
     class Meta:
         model = Case
-        fields = ("id", "title", "description", "status", "created_by", "created_at")
+        fields = ("id", "title", "description", "status", "crime_level", "created_by", "created_at")
         read_only_fields = ("id", "status", "created_by", "created_at")
 
 
@@ -152,3 +157,101 @@ class DetectiveBoardSerializer(serializers.ModelSerializer):
             }
             for l in qs
         ]
+
+
+# =========================
+# Step 2: Flow Serializers
+# =========================
+
+class SolveSubmitSerializer(serializers.Serializer):
+    suspect_ids = serializers.ListField(
+        child=serializers.IntegerField(min_value=1),
+        allow_empty=False,
+    )
+    note = serializers.CharField(required=False, allow_blank=True, default="")
+
+
+class SolveReviewSerializer(serializers.Serializer):
+    decision = serializers.ChoiceField(choices=["approve", "reject"])
+    comment = serializers.CharField(required=False, allow_blank=True, default="")
+
+
+class SolveRequestSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = SolveRequest
+        fields = (
+            "id",
+            "case",
+            "suspect_ids",
+            "note",
+            "status",
+            "submitted_by",
+            "submitted_at",
+            "reviewed_by",
+            "reviewed_at",
+            "review_comment",
+        )
+        read_only_fields = fields
+
+
+class InterrogationScoreSerializer(serializers.Serializer):
+    score = serializers.IntegerField(min_value=1, max_value=10)
+
+
+class InterrogationSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Interrogation
+        fields = ("id", "case", "suspect_id", "detective_score", "sergent_score", "created_at", "updated_at")
+        read_only_fields = fields
+
+
+class CaptainDecisionCreateSerializer(serializers.Serializer):
+    decision = serializers.ChoiceField(choices=["SEND_TO_TRIAL", "RELEASE"])
+    comment = serializers.CharField(required=False, allow_blank=True, default="")
+
+
+class ChiefApprovalSerializer(serializers.Serializer):
+    approve = serializers.BooleanField()
+    comment = serializers.CharField(required=False, allow_blank=True, default="")
+
+
+class CaptainDecisionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = CaptainDecision
+        fields = (
+            "case",
+            "decision",
+            "comment",
+            "decided_by",
+            "decided_at",
+            "chief_approved",
+            "chief_by",
+            "chief_at",
+            "chief_comment",
+        )
+        read_only_fields = fields
+
+
+class TrialVerdictSerializer(serializers.Serializer):
+    verdict = serializers.ChoiceField(choices=["GUILTY", "INNOCENT"])
+    punishment_title = serializers.CharField(required=False, allow_blank=True, default="")
+    punishment_description = serializers.CharField(required=False, allow_blank=True, default="")
+
+
+class TrialSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Trial
+        fields = ("case", "verdict", "punishment_title", "punishment_description", "judged_by", "judged_at")
+        read_only_fields = fields
+
+
+class CaseNotificationSerializer(serializers.ModelSerializer):
+    is_read = serializers.SerializerMethodField()
+
+    class Meta:
+        model = CaseNotification
+        fields = ("id", "case", "notif_type", "message", "ref_model", "ref_id", "created_at", "read_at", "is_read")
+        read_only_fields = fields
+
+    def get_is_read(self, obj):
+        return obj.read_at is not None
