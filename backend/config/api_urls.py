@@ -4,7 +4,7 @@ from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
 from cases.views import CaseViewSet
 from evidence.views import EvidenceViewSet
-from config.stats import StatsView 
+from config.stats_api import StatsView  
 
 router = DefaultRouter()
 router.register(r"cases", CaseViewSet, basename="cases")
