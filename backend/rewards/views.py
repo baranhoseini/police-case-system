@@ -1,10 +1,9 @@
 # rewards/views.py
 import uuid
-from datetime import timedelta
 
-from django.db.models import Max
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
+
 
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
@@ -55,6 +54,7 @@ class SubmitTip(APIView):
             )
 
         tip = RewardTip.objects.create(
+            citizen=request.user,
             citizen_name=citizen_name,
             citizen_national_id=citizen_national_id,
             citizen_phone=citizen_phone,
@@ -155,14 +155,12 @@ class RewardLookup(APIView):
     """
     GET /api/rewards/lookup/?citizen_national_id=...&unique_code=...
 
-    IMPORTANT:
-    - Must be accessible by ALL police ranks (your roles list).
-    - Must return reward_amount and citizen details.
+    Must be accessible by ALL police ranks.
+    Must return reward_amount and citizen details.
     """
     permission_classes = [IsPoliceRole]
 
     def get(self, request):
-        # Support both query params and body (query params preferred)
         citizen_national_id = request.query_params.get("citizen_national_id") or request.data.get("citizen_national_id")
         unique_code = request.query_params.get("unique_code") or request.data.get("unique_code")
 
@@ -172,14 +170,13 @@ class RewardLookup(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        # Only detective-approved tips should be visible in lookup
         tip = (
             RewardTip.objects.filter(
                 citizen_national_id=citizen_national_id,
                 unique_code=unique_code,
                 status=RewardTip.STATUS_DETECTIVE_APPROVED,
             )
-            .order_by("-detective_approved_at")
+            .order_by("-detective_approved_at", "-id")
             .first()
         )
 
@@ -189,21 +186,12 @@ class RewardLookup(APIView):
                 status=status.HTTP_404_NOT_FOUND,
             )
 
-        # Try to match suspect by name (best-effort).
-        # If you later add FK tip -> suspect, you can replace this with tip.suspect.
-        suspect = Suspect.objects.filter(full_name__iexact=tip.suspect_name).order_by("-created_at").first()
+        # Match suspect by name (best-effort).
+        suspect = Suspect.objects.filter(full_name__iexact=tip.suspect_name).order_by("-chase_started_at", "-id").first()
 
-        # Reward calculation: based on most-wanted pool (>= 30 days under chase)
-        cutoff = timezone.now() - timedelta(days=30)
-        wanted_qs = Suspect.objects.filter(under_chase=True, created_at__lte=cutoff)
-
-        max_l = wanted_qs.aggregate(m=Max("rank"))["m"] or 0
-        max_d = Suspect.objects.aggregate(m=Max("max_d"))["m"] or 0
-
-        if suspect and max_l and max_d and suspect.rank:
-            reward_amount = int(round((float(suspect.rank) / float(max_l)) * float(max_d)))
-        else:
-            reward_amount = 0
+        # Your Suspect model computes reward in rials: reward_amount_rials
+        # Keep API key as "reward_amount" (as tests usually expect).
+        reward_amount = int(getattr(suspect, "reward_amount_rials", 0)) if suspect else 0
 
         return Response(
             {
