@@ -67,23 +67,23 @@ export default function CaseDetailsPage() {
     );
   }
 
+  const displayId = `C-${caseId}`;
+
   return (
     <MainLayout title="Case details">
       <Breadcrumbs
         items={[
           { label: "Dashboard", to: "/dashboard" },
           { label: "Cases", to: "/cases" },
-          { label: caseId ?? "Case" },
+          { label: displayId },
         ]}
       />
       <div style={{ display: "grid", gap: 14 }}>
-        <Card title={`Case: ${caseId}`}>
+        <Card title={`Case: ${displayId}`}>
           {loading ? (
             <p style={{ margin: 0, color: "var(--muted)" }}>Loading case details...</p>
           ) : !data ? (
-            <p style={{ margin: 0, color: "var(--muted)" }}>
-              Case not found. Try opening <strong>C-1001</strong>.
-            </p>
+            <p style={{ margin: 0, color: "var(--muted)" }}>Case not found.</p>
           ) : (
             <CaseHeader bundle={data} />
           )}

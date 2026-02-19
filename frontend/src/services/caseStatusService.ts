@@ -1,3 +1,5 @@
+import axios from "axios";
+import { apiClient } from "./apiClient";
 import type { CaseStatus, ComplaintType } from "../types/case";
 import type { ISODateString } from "../types/common";
 
@@ -18,61 +20,167 @@ export type CaseStatusResult = {
   timeline: CaseStatusTimelineItem[];
 };
 
-const MOCK: Record<string, CaseStatusResult> = {
-  "C-1001": {
-    caseId: "C-1001",
-    title: "Stolen vehicle near central station",
-    complaintType: "THEFT",
-    currentStatus: "ACTIVE",
-    createdAt: "2026-02-01T09:20:00Z",
-    updatedAt: "2026-02-03T12:10:00Z",
-    timeline: [
-      {
-        at: "2026-02-01T09:20:00Z",
-        status: "SUBMITTED",
-        title: "Complaint submitted",
-        description: "Your complaint was submitted successfully.",
-      },
-      {
-        at: "2026-02-01T11:00:00Z",
-        status: "UNDER_REVIEW",
-        title: "Under review",
-        description: "A duty officer is reviewing your submission.",
-      },
-      {
-        at: "2026-02-03T12:10:00Z",
-        status: "ACTIVE",
-        title: "Case activated",
-        description: "Your case is now active and assigned for investigation.",
-      },
-    ],
-  },
-
-  "C-1002": {
-    caseId: "C-1002",
-    title: "Suspicious financial transactions",
-    complaintType: "FRAUD",
-    currentStatus: "UNDER_REVIEW",
-    createdAt: "2026-01-28T15:00:00Z",
-    updatedAt: "2026-02-02T08:45:00Z",
-    timeline: [
-      {
-        at: "2026-01-28T15:00:00Z",
-        status: "SUBMITTED",
-        title: "Complaint submitted",
-      },
-      {
-        at: "2026-02-02T08:45:00Z",
-        status: "UNDER_REVIEW",
-        title: "Under review",
-        description: "We may contact you for additional information.",
-      },
-    ],
-  },
+type BackendCase = {
+  id: number;
+  title: string;
+  description?: string;
+  status: "DRAFT" | "SUBMITTED" | "UNDER_REVIEW" | "OPEN" | "CLOSED" | "INVALIDATED";
+  created_at: string;
 };
 
+type BackendCrimeScene = {
+  exists: boolean;
+  is_approved: boolean | null;
+  report: string | null;
+};
+
+type BackendSolveRequest = {
+  submitted_at: string | null;
+  note: string;
+} | null;
+
+type BackendCaptainDecision = {
+  decision: "SEND_TO_TRIAL" | "RELEASE";
+  decided_at: string | null;
+  comment: string;
+  chief_approved: boolean | null;
+  chief_at: string | null;
+  chief_comment: string;
+} | null;
+
+type BackendTrial = {
+  verdict: "GUILTY" | "INNOCENT";
+  judged_at: string | null;
+  punishment_title: string;
+  punishment_description: string;
+} | null;
+
+type BackendDossier = {
+  case: BackendCase;
+  complaint: string | null;
+  crime_scene: BackendCrimeScene;
+  solve_request: BackendSolveRequest;
+  captain_decision: BackendCaptainDecision;
+  trial: BackendTrial;
+};
+
+function normalizeCaseId(v: string): string {
+  return v.trim().replace(/^C-/i, "");
+}
+
+function mapStatus(s: BackendCase["status"]): CaseStatus {
+  if (s === "OPEN") return "ACTIVE";
+  if (s === "INVALIDATED") return "REJECTED";
+  return s;
+}
+
+function mapComplaintType(_d: BackendDossier): ComplaintType {
+  return "OTHER";
+}
+
+function buildTimeline(d: BackendDossier): CaseStatusTimelineItem[] {
+  const items: CaseStatusTimelineItem[] = [];
+  const status = mapStatus(d.case.status);
+
+  items.push({
+    at: d.case.created_at,
+    status,
+    title: "Case created",
+  });
+
+  if (typeof d.complaint === "string" && d.complaint.trim()) {
+    items.push({
+      at: d.case.created_at,
+      status,
+      title: "Complaint recorded",
+    });
+  }
+
+  if (d.crime_scene?.exists) {
+    items.push({
+      at: d.case.created_at,
+      status,
+      title: "Crime scene report attached",
+      description: d.crime_scene.report ?? undefined,
+    });
+
+    if (d.crime_scene.is_approved === true) {
+      items.push({
+        at: d.case.created_at,
+        status,
+        title: "Crime scene approved",
+      });
+    }
+  }
+
+  if (d.solve_request?.submitted_at) {
+    items.push({
+      at: d.solve_request.submitted_at,
+      status,
+      title: "Solve request submitted",
+      description: d.solve_request.note || undefined,
+    });
+  }
+
+  if (d.captain_decision?.decided_at) {
+    items.push({
+      at: d.captain_decision.decided_at,
+      status,
+      title: "Captain decision recorded",
+      description: d.captain_decision.comment || undefined,
+    });
+
+    if (d.captain_decision.chief_at) {
+      items.push({
+        at: d.captain_decision.chief_at,
+        status,
+        title: "Chief review",
+        description: d.captain_decision.chief_comment || undefined,
+      });
+    }
+  }
+
+  if (d.trial?.judged_at) {
+    const punishment =
+      d.trial.punishment_title || d.trial.punishment_description
+        ? `${d.trial.punishment_title}${
+            d.trial.punishment_description ? ` — ${d.trial.punishment_description}` : ""
+          }`
+        : undefined;
+
+    items.push({
+      at: d.trial.judged_at,
+      status,
+      title: d.trial.verdict === "GUILTY" ? "Trial verdict: Guilty" : "Trial verdict: Innocent",
+      description: punishment,
+    });
+  }
+
+  return items.sort((a, b) => new Date(a.at).getTime() - new Date(b.at).getTime());
+}
+
 export async function trackCaseStatus(caseIdOrCode: string): Promise<CaseStatusResult | null> {
-  await new Promise((r) => setTimeout(r, 250));
-  const key = caseIdOrCode.trim().toUpperCase();
-  return MOCK[key] ?? null;
+  const id = normalizeCaseId(caseIdOrCode);
+  if (!id) return null;
+
+  try {
+    const { data } = await apiClient.get<BackendDossier>(`/cases/${id}/dossier/`);
+    const currentStatus = mapStatus(data.case.status);
+
+    return {
+      caseId: `C-${data.case.id}`,
+      title: data.case.title,
+      complaintType: mapComplaintType(data),
+      currentStatus,
+      createdAt: data.case.created_at,
+      updatedAt: undefined,
+      timeline: buildTimeline(data),
+    };
+  } catch (err) {
+    if (axios.isAxiosError(err)) {
+      const status = err.response?.status;
+      if (status === 404 || status === 400) return null;
+    }
+    throw err;
+  }
 }

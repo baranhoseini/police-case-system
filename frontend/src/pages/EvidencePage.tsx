@@ -15,19 +15,25 @@ import {
   listEvidence,
   setEvidenceStatus,
 } from "../services/evidenceService";
+import { getApiErrorMessage } from "../services/apiErrors";
 
 type EvidenceKind = Evidence["kind"];
 
 export default function EvidencePage() {
-  const [caseId, setCaseId] = useState<string>("C-1001");
+  const [caseId, setCaseId] = useState<string>("");
   const [items, setItems] = useState<Evidence[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const refresh = async () => {
     setLoading(true);
+    setError(null);
     try {
       const data = await listEvidence({ caseId: caseId.trim() || undefined });
       setItems(data);
+    } catch (e) {
+      setError(getApiErrorMessage(e));
+      setItems([]);
     } finally {
       setLoading(false);
     }
@@ -47,7 +53,7 @@ export default function EvidencePage() {
               label="Case ID"
               value={caseId}
               onChange={(e) => setCaseId(e.target.value)}
-              placeholder="e.g. C-1001 (leave empty for all)"
+              placeholder='e.g. C-1 (leave empty for all)'
             />
             <div style={{ alignSelf: "end" }}>
               <Button variant="secondary" onClick={() => void refresh()}>
@@ -60,6 +66,8 @@ export default function EvidencePage() {
         <AddEvidenceCard defaultCaseId={caseId} onAdded={() => void refresh()} />
 
         <Card title="Evidence list">
+          {error ? <p style={{ margin: 0, color: "crimson", fontWeight: 800 }}>{error}</p> : null}
+
           {loading ? (
             <p style={{ margin: 0, color: "var(--muted)" }}>Loading evidence...</p>
           ) : items.length === 0 ? (
@@ -74,6 +82,8 @@ export default function EvidencePage() {
 }
 
 function EvidenceTable({ items, onChanged }: { items: Evidence[]; onChanged: () => void }) {
+  const [busyId, setBusyId] = useState<string | null>(null);
+
   return (
     <Table>
       <thead>
@@ -100,9 +110,17 @@ function EvidenceTable({ items, onChanged }: { items: Evidence[]; onChanged: () 
               <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                 <button
                   type="button"
+                  disabled={busyId === e.id}
                   onClick={async () => {
-                    await setEvidenceStatus(e.id, "VERIFIED");
-                    onChanged();
+                    setBusyId(e.id);
+                    try {
+                      await setEvidenceStatus(e.id, "VERIFIED");
+                      onChanged();
+                    } catch (err) {
+                      alert(getApiErrorMessage(err));
+                    } finally {
+                      setBusyId(null);
+                    }
                   }}
                   style={smallActionStyle()}
                 >
@@ -110,9 +128,17 @@ function EvidenceTable({ items, onChanged }: { items: Evidence[]; onChanged: () 
                 </button>
                 <button
                   type="button"
+                  disabled={busyId === e.id}
                   onClick={async () => {
-                    await setEvidenceStatus(e.id, "REJECTED");
-                    onChanged();
+                    setBusyId(e.id);
+                    try {
+                      await setEvidenceStatus(e.id, "REJECTED");
+                      onChanged();
+                    } catch (err) {
+                      alert(getApiErrorMessage(err));
+                    } finally {
+                      setBusyId(null);
+                    }
                   }}
                   style={smallActionStyle()}
                 >
@@ -127,62 +153,45 @@ function EvidenceTable({ items, onChanged }: { items: Evidence[]; onChanged: () 
   );
 }
 
-function AddEvidenceCard({
-  defaultCaseId,
-  onAdded,
-}: {
-  defaultCaseId: string;
-  onAdded: () => void;
-}) {
+function AddEvidenceCard({ defaultCaseId, onAdded }: { defaultCaseId: string; onAdded: () => void }) {
   const [kind, setKind] = useState<EvidenceKind>("IDENTITY");
 
-  // common fields
-  const [caseId, setCaseId] = useState(defaultCaseId || "C-1001");
+  const [caseId, setCaseId] = useState(defaultCaseId || "");
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
 
-  // identity
   const [kvKey, setKvKey] = useState("");
   const [kvValue, setKvValue] = useState("");
   const [identityFields, setIdentityFields] = useState<Record<string, string>>({});
 
-  // vehicle
   const [plateNumber, setPlateNumber] = useState("");
   const [vin, setVin] = useState("");
   const [model, setModel] = useState("");
   const [color, setColor] = useState("");
 
-  // medical
   const [sampleType, setSampleType] = useState("");
   const [labNotes, setLabNotes] = useState("");
 
-  // media
   const [mediaType, setMediaType] = useState<"IMAGE" | "VIDEO" | "AUDIO">("IMAGE");
   const [url, setUrl] = useState("");
+
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setCaseId(defaultCaseId || "");
+  }, [defaultCaseId]);
 
   const canSubmit = useMemo(() => {
     if (!caseId.trim()) return false;
     if (!title.trim()) return false;
 
     if (kind === "IDENTITY") return Object.keys(identityFields).length > 0;
-    if (kind === "VEHICLE")
-      return Boolean(plateNumber.trim() || vin.trim() || model.trim() || color.trim());
+    if (kind === "VEHICLE") return Boolean(plateNumber.trim() || vin.trim() || model.trim() || color.trim());
     if (kind === "MEDICAL") return Boolean(sampleType.trim() || labNotes.trim());
     if (kind === "MEDIA") return Boolean(url.trim());
     return false;
-  }, [
-    caseId,
-    title,
-    kind,
-    identityFields,
-    plateNumber,
-    vin,
-    model,
-    color,
-    sampleType,
-    labNotes,
-    url,
-  ]);
+  }, [caseId, title, kind, identityFields, plateNumber, vin, model, color, sampleType, labNotes, url]);
 
   const reset = () => {
     setTitle("");
@@ -198,69 +207,81 @@ function AddEvidenceCard({
     setLabNotes("");
     setMediaType("IMAGE");
     setUrl("");
+    setSubmitError(null);
   };
 
   const submit = async () => {
-    if (!canSubmit) return;
+    if (!canSubmit || submitting) return;
 
-    if (kind === "IDENTITY") {
-      await addEvidence({
-        kind: "IDENTITY",
-        caseId: caseId.trim(),
-        title: title.trim(),
-        description: description.trim() || undefined,
-        fields: identityFields,
-      });
+    setSubmitting(true);
+    setSubmitError(null);
+
+    try {
+      if (kind === "IDENTITY") {
+        await addEvidence({
+          kind: "IDENTITY",
+          caseId: caseId.trim(),
+          title: title.trim(),
+          description: description.trim() || undefined,
+          fields: identityFields,
+        });
+      }
+
+      if (kind === "VEHICLE") {
+        await addEvidence({
+          kind: "VEHICLE",
+          caseId: caseId.trim(),
+          title: title.trim(),
+          description: description.trim() || undefined,
+          plateNumber: plateNumber.trim() || undefined,
+          vin: vin.trim() || undefined,
+          model: model.trim() || undefined,
+          color: color.trim() || undefined,
+        });
+      }
+
+      if (kind === "MEDICAL") {
+        await addEvidence({
+          kind: "MEDICAL",
+          caseId: caseId.trim(),
+          title: title.trim(),
+          description: description.trim() || undefined,
+          sampleType: sampleType.trim() || undefined,
+          labNotes: labNotes.trim() || undefined,
+        });
+      }
+
+      if (kind === "MEDIA") {
+        await addEvidence({
+          kind: "MEDIA",
+          caseId: caseId.trim(),
+          title: title.trim(),
+          description: description.trim() || undefined,
+          mediaType,
+          url: url.trim(),
+        });
+      }
+
+      reset();
+      onAdded();
+    } catch (e) {
+      setSubmitError(getApiErrorMessage(e));
+    } finally {
+      setSubmitting(false);
     }
-
-    if (kind === "VEHICLE") {
-      await addEvidence({
-        kind: "VEHICLE",
-        caseId: caseId.trim(),
-        title: title.trim(),
-        description: description.trim() || undefined,
-        plateNumber: plateNumber.trim() || undefined,
-        vin: vin.trim() || undefined,
-        model: model.trim() || undefined,
-        color: color.trim() || undefined,
-      });
-    }
-
-    if (kind === "MEDICAL") {
-      await addEvidence({
-        kind: "MEDICAL",
-        caseId: caseId.trim(),
-        title: title.trim(),
-        description: description.trim() || undefined,
-        sampleType: sampleType.trim() || undefined,
-        labNotes: labNotes.trim() || undefined,
-      });
-    }
-
-    if (kind === "MEDIA") {
-      await addEvidence({
-        kind: "MEDIA",
-        caseId: caseId.trim(),
-        title: title.trim(),
-        description: description.trim() || undefined,
-        mediaType,
-        url: url.trim(),
-      });
-    }
-
-    reset();
-    onAdded();
   };
 
   return (
     <Card title="Add evidence">
       <div style={{ display: "grid", gap: 12 }}>
+        {submitError ? <div style={{ color: "crimson", fontSize: 13, fontWeight: 800 }}>{submitError}</div> : null}
+
         <div style={{ display: "grid", gridTemplateColumns: "1fr 260px", gap: 12 }}>
           <Input
             label="Case ID"
             value={caseId}
             onChange={(e) => setCaseId(e.target.value)}
-            placeholder="C-1001"
+            placeholder="C-1"
           />
           <label style={{ display: "grid", gap: 6 }}>
             <span style={{ fontSize: 14, color: "var(--muted)" }}>Type</span>
@@ -283,12 +304,7 @@ function AddEvidenceCard({
         </div>
 
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-          <Input
-            label="Title"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            placeholder="Evidence title"
-          />
+          <Input label="Title" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Evidence title" />
           <Input
             label="Description"
             value={description}
@@ -298,109 +314,67 @@ function AddEvidenceCard({
         </div>
 
         {kind === "IDENTITY" ? (
-          <div style={{ display: "grid", gap: 12 }}>
-            <Card title="Identity fields (key-value)">
-              <div style={{ display: "grid", gap: 10, gridTemplateColumns: "1fr 1fr auto" }}>
-                <Input
-                  label="Key"
-                  value={kvKey}
-                  onChange={(e) => setKvKey(e.target.value)}
-                  placeholder="e.g. Passport"
-                />
-                <Input
-                  label="Value"
-                  value={kvValue}
-                  onChange={(e) => setKvValue(e.target.value)}
-                  placeholder="e.g. 123456789"
-                />
-                <div style={{ alignSelf: "end" }}>
-                  <Button
-                    variant="secondary"
-                    onClick={() => {
-                      const k = kvKey.trim();
-                      const v = kvValue.trim();
-                      if (!k || !v) return;
-                      setIdentityFields((prev) => ({ ...prev, [k]: v }));
-                      setKvKey("");
-                      setKvValue("");
-                    }}
-                  >
-                    Add
-                  </Button>
-                </div>
+          <Card title="Identity fields (key-value)">
+            <div style={{ display: "grid", gap: 10, gridTemplateColumns: "1fr 1fr auto" }}>
+              <Input label="Key" value={kvKey} onChange={(e) => setKvKey(e.target.value)} placeholder="e.g. Passport" />
+              <Input label="Value" value={kvValue} onChange={(e) => setKvValue(e.target.value)} placeholder="e.g. 123456789" />
+              <div style={{ alignSelf: "end" }}>
+                <Button
+                  variant="secondary"
+                  onClick={() => {
+                    const k = kvKey.trim();
+                    const v = kvValue.trim();
+                    if (!k || !v) return;
+                    setIdentityFields((prev) => ({ ...prev, [k]: v }));
+                    setKvKey("");
+                    setKvValue("");
+                  }}
+                >
+                  Add
+                </Button>
               </div>
+            </div>
 
-              {Object.keys(identityFields).length === 0 ? (
-                <p style={{ margin: 0, color: "var(--muted)" }}>Add at least one key-value pair.</p>
-              ) : (
-                <ul style={{ margin: 0, paddingLeft: 18 }}>
-                  {Object.entries(identityFields).map(([k, v]) => (
-                    <li key={k}>
-                      <strong>{k}:</strong> {v}{" "}
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setIdentityFields((prev) => {
-                            const next = { ...prev };
-                            delete next[k];
-                            return next;
-                          })
-                        }
-                        style={{ marginLeft: 8, ...smallActionStyle() }}
-                      >
-                        Remove
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </Card>
-          </div>
+            {Object.keys(identityFields).length === 0 ? (
+              <p style={{ margin: 0, color: "var(--muted)" }}>Add at least one key-value pair.</p>
+            ) : (
+              <ul style={{ margin: 0, paddingLeft: 18 }}>
+                {Object.entries(identityFields).map(([k, v]) => (
+                  <li key={k}>
+                    <strong>{k}:</strong> {v}{" "}
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setIdentityFields((prev) => {
+                          const next = { ...prev };
+                          delete next[k];
+                          return next;
+                        })
+                      }
+                      style={{ marginLeft: 8, ...smallActionStyle() }}
+                    >
+                      Remove
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </Card>
         ) : null}
 
         {kind === "VEHICLE" ? (
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-            <Input
-              label="Plate number"
-              value={plateNumber}
-              onChange={(e) => setPlateNumber(e.target.value)}
-              placeholder="ABC-1234"
-            />
-            <Input
-              label="VIN"
-              value={vin}
-              onChange={(e) => setVin(e.target.value)}
-              placeholder="Optional"
-            />
-            <Input
-              label="Model"
-              value={model}
-              onChange={(e) => setModel(e.target.value)}
-              placeholder="Optional"
-            />
-            <Input
-              label="Color"
-              value={color}
-              onChange={(e) => setColor(e.target.value)}
-              placeholder="Optional"
-            />
+            <Input label="Plate number" value={plateNumber} onChange={(e) => setPlateNumber(e.target.value)} placeholder="ABC-1234" />
+            <Input label="VIN" value={vin} onChange={(e) => setVin(e.target.value)} placeholder="Optional" />
+            <Input label="Model" value={model} onChange={(e) => setModel(e.target.value)} placeholder="Optional" />
+            <Input label="Color" value={color} onChange={(e) => setColor(e.target.value)} placeholder="Optional" />
           </div>
         ) : null}
 
         {kind === "MEDICAL" ? (
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-            <Input
-              label="Sample type"
-              value={sampleType}
-              onChange={(e) => setSampleType(e.target.value)}
-              placeholder="e.g. Blood"
-            />
-            <Input
-              label="Lab notes"
-              value={labNotes}
-              onChange={(e) => setLabNotes(e.target.value)}
-              placeholder="Optional"
-            />
+            <Input label="Sample type" value={sampleType} onChange={(e) => setSampleType(e.target.value)} placeholder="e.g. Blood" />
+            <Input label="Lab notes" value={labNotes} onChange={(e) => setLabNotes(e.target.value)} placeholder="Optional" />
           </div>
         ) : null}
 
@@ -437,18 +411,18 @@ function AddEvidenceCard({
               mediaType={mediaType}
               maxSizeMB={10}
               onUploaded={(res) => {
-                // After upload, we auto-fill the URL
-                setUrl(res.url);
+                if (res.url) setUrl(res.url);
               }}
+
             />
           </div>
         ) : null}
 
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-          <Button disabled={!canSubmit} onClick={() => void submit()}>
-            Add evidence
+          <Button disabled={!canSubmit || submitting} onClick={() => void submit()}>
+            {submitting ? "Adding..." : "Add evidence"}
           </Button>
-          <Button variant="secondary" onClick={reset}>
+          <Button variant="secondary" onClick={reset} disabled={submitting}>
             Reset
           </Button>
 

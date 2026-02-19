@@ -4,19 +4,38 @@ function isRecord(v: unknown): v is Record<string, unknown> {
   return typeof v === "object" && v !== null;
 }
 
+function pickString(v: unknown, key: string): string | null {
+  if (!isRecord(v)) return null;
+  const x = v[key];
+  return typeof x === "string" ? x : null;
+}
+
 export function getApiErrorMessage(err: unknown): string {
   if (axios.isAxiosError(err)) {
     const status = err.response?.status;
     const data: unknown = err.response?.data;
 
-    const msg =
-      isRecord(data) && typeof data.message === "string"
-        ? data.message
-        : isRecord(data) && typeof data.detail === "string"
-          ? data.detail
-          : typeof data === "string"
-            ? data
-            : null;
+    let msg: string | null = null;
+
+    if (isRecord(data)) {
+      msg =
+        pickString(data, "message") ||
+        pickString(data, "detail") ||
+        pickString(data, "error") ||
+        null;
+
+      const errorObj = data["error"];
+      if (!msg && isRecord(errorObj)) {
+        msg = pickString(errorObj, "message") || pickString(errorObj, "code") || null;
+
+        const detailsObj = errorObj["details"];
+        if (!msg && isRecord(detailsObj)) {
+          msg = pickString(detailsObj, "detail") || pickString(detailsObj, "message") || null;
+        }
+      }
+    } else if (typeof data === "string") {
+      msg = data;
+    }
 
     if (msg) return msg;
 

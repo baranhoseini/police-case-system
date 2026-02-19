@@ -7,9 +7,10 @@ import Button from "../components/Button";
 
 import { trackCaseStatus, type CaseStatusResult } from "../services/caseStatusService";
 import { formatCaseStatus, formatComplaintType } from "../services/casesService";
+import { getApiErrorMessage } from "../services/apiErrors";
 
 export default function CaseComplaintsStatusPage() {
-  const [query, setQuery] = useState("C-1001");
+  const [query, setQuery] = useState("");
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<CaseStatusResult | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -20,16 +21,20 @@ export default function CaseComplaintsStatusPage() {
 
     setLoading(true);
     setError(null);
+
     try {
       const data = await trackCaseStatus(q);
+
       if (!data) {
         setResult(null);
-        setError("No case found for this tracking code. Try C-1001 or C-1002.");
+        setError("No case found for this tracking code.");
         return;
       }
+
       setResult(data);
-    } catch {
-      setError("Failed to load status. Please try again.");
+    } catch (err) {
+      setResult(null);
+      setError(getApiErrorMessage(err));
     } finally {
       setLoading(false);
     }

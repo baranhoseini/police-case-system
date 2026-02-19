@@ -28,6 +28,12 @@ export const MODULES: ModuleInfo[] = [
     to: "/case-status",
   },
   {
+    key: "INTAKE",
+    title: "Intake",
+    description: "Submit and review complaints.",
+    to: "/intake/complaints",
+  },
+  {
     key: "REPORTS",
     title: "Reports",
     description: "Generate global case reports.",

@@ -19,6 +19,7 @@ function allowedMimeTypes(mediaType: MediaKind): string[] {
 
 export default function MediaUploader({ mediaType, maxSizeMB = 10, onUploaded }: Props) {
   const inputRef = useRef<HTMLInputElement | null>(null);
+
   const [file, setFile] = useState<File | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [progress, setProgress] = useState<number>(0);
@@ -31,12 +32,15 @@ export default function MediaUploader({ mediaType, maxSizeMB = 10, onUploaded }:
 
   const validate = (f: File): string | null => {
     const okTypes = allowedMimeTypes(mediaType);
+
     if (f.type && !okTypes.includes(f.type)) {
       return `Unsupported file type. Please upload a valid ${mediaType.toLowerCase()} file.`;
     }
+
     if (f.size > maxBytes) {
       return `File is too large. Max size is ${maxSizeMB} MB.`;
     }
+
     return null;
   };
 
@@ -46,16 +50,19 @@ export default function MediaUploader({ mediaType, maxSizeMB = 10, onUploaded }:
     setFile(null);
 
     if (!f) return;
+
     const err = validate(f);
     if (err) {
       setError(err);
       return;
     }
+
     setFile(f);
   };
 
   const doUpload = async () => {
-    if (!file) return;
+    if (!file || uploading) return;
+
     setUploading(true);
     setError(null);
     setProgress(0);
@@ -112,9 +119,7 @@ export default function MediaUploader({ mediaType, maxSizeMB = 10, onUploaded }:
                 background: "white",
               }}
             >
-              <div
-                style={{ width: `${progress}%`, height: "100%", background: "var(--primary)" }}
-              />
+              <div style={{ width: `${progress}%`, height: "100%", background: "var(--primary)" }} />
             </div>
           </div>
         ) : null}

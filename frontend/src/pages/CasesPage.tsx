@@ -112,7 +112,7 @@ export default function CasesPage() {
                 {items.map((c) => (
                   <tr key={c.id}>
                     <Td>
-                      <Link to={`/cases/${c.id}`} style={{ fontWeight: 800 }}>
+                      <Link to={`/cases/${c.id.replace("C-", "")}`} style={{ fontWeight: 800 }}>
                         {c.id}
                       </Link>
                     </Td>

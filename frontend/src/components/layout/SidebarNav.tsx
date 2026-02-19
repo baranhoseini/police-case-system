@@ -12,7 +12,8 @@ export default function SidebarNav() {
   return (
     <div style={{ display: "grid", gap: 10 }}>
       {visible.map((m) => {
-        const active = location.pathname === m.to;
+        const active = location.pathname === m.to || location.pathname.startsWith(`${m.to}/`);
+
         return (
           <Link
             key={m.key}

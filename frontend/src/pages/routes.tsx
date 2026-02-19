@@ -12,6 +12,8 @@ import EvidencePage from "./EvidencePage";
 import NotFoundPage from "./NotFoundPage";
 import CasesPage from "./CasesPage";
 import CaseDetailsPage from "./CaseDetailsPage";
+import IntakeComplaintsPage from "./IntakeComplaintsPage";
+import IntakeComplaintDetailsPage from "./IntakeComplaintDetailsPage";
 
 export default function AppRoutes() {
   return (
@@ -77,6 +79,33 @@ export default function AppRoutes() {
         element={
           <ProtectedRoute>
             <CaseDetailsPage />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/intake/complaints"
+        element={
+          <ProtectedRoute>
+            <IntakeComplaintsPage />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/intake/complaints/new"
+        element={
+          <ProtectedRoute>
+            <IntakeComplaintDetailsPage />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/intake/complaints/:id"
+        element={
+          <ProtectedRoute>
+            <IntakeComplaintDetailsPage />
           </ProtectedRoute>
         }
       />
