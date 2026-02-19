@@ -1,47 +1,33 @@
+import { apiClient } from "./apiClient";
 import type { MostWantedItem, MostWantedLevel } from "../types/mostWanted";
 
-const MOCK: MostWantedItem[] = [
-  {
-    id: "MW-2001",
-    fullName: "Daniel Kraus",
-    reason: "Armed robbery and repeated assault",
-    level: "CRITICAL",
-    rewardAmount: 25000,
-    lastSeenLocation: "Berlin, Friedrichshain",
-    createdAt: "2026-01-22T09:00:00Z",
-  },
-  {
-    id: "MW-2002",
-    fullName: "Mila Novak",
-    reason: "Major fraud network coordinator",
-    level: "HIGH",
-    rewardAmount: 15000,
-    lastSeenLocation: "Hamburg, Altona",
-    createdAt: "2026-01-29T12:20:00Z",
-  },
-  {
-    id: "MW-2003",
-    fullName: "Omar Haddad",
-    reason: "Vehicle theft ring involvement",
-    level: "MEDIUM",
-    rewardAmount: 8000,
-    lastSeenLocation: "Cologne, Innenstadt",
-    createdAt: "2026-02-02T16:10:00Z",
-  },
-  {
-    id: "MW-2004",
-    fullName: "Lea Schuster",
-    reason: "Repeated cyber crime and identity theft",
-    level: "LOW",
-    rewardAmount: 3000,
-    lastSeenLocation: "Munich, Schwabing",
-    createdAt: "2026-02-04T08:40:00Z",
-  },
-];
+type BackendMostWanted = {
+  id: number;
+  full_name: string;
+  chase_started_at: string;
+  rank_score?: number;
+  reward_amount_rials?: number;
+};
+
+function levelFromScore(score: number): MostWantedLevel {
+  if (score >= 80) return "CRITICAL";
+  if (score >= 40) return "HIGH";
+  if (score >= 20) return "MEDIUM";
+  return "LOW";
+}
 
 export async function listMostWanted(): Promise<MostWantedItem[]> {
-  await new Promise((r) => setTimeout(r, 250));
-  return [...MOCK];
+  const { data } = await apiClient.get<BackendMostWanted[]>("/suspects/most-wanted/");
+
+  return data.map((s) => ({
+    id: String(s.id),
+    fullName: s.full_name,
+    reason: "—",
+    level: levelFromScore(typeof s.rank_score === "number" ? s.rank_score : 0),
+    rewardAmount: typeof s.reward_amount_rials === "number" ? s.reward_amount_rials : 0,
+    lastSeenLocation: undefined,
+    createdAt: s.chase_started_at,
+  }));
 }
 
 export function formatMostWantedLevel(level: MostWantedLevel): string {
