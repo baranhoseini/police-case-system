@@ -9,15 +9,15 @@ export function setToken(token: string) {
   localStorage.setItem(ACCESS_TOKEN_KEY, token);
 }
 
-export function clearToken() {
-  localStorage.removeItem(ACCESS_TOKEN_KEY);
-  localStorage.removeItem(REFRESH_TOKEN_KEY);
-}
-
 export function getRefreshToken(): string | null {
   return localStorage.getItem(REFRESH_TOKEN_KEY);
 }
 
 export function setRefreshToken(token: string) {
   localStorage.setItem(REFRESH_TOKEN_KEY, token);
+}
+
+export function clearToken() {
+  localStorage.removeItem(ACCESS_TOKEN_KEY);
+  localStorage.removeItem(REFRESH_TOKEN_KEY);
 }
