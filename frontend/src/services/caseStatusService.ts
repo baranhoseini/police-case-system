@@ -1,3 +1,4 @@
+import axios from "axios";
 import { apiClient } from "./apiClient";
 import type { CaseStatus, ComplaintType } from "../types/case";
 import type { ISODateString } from "../types/common";
@@ -79,19 +80,18 @@ function mapComplaintType(_d: BackendDossier): ComplaintType {
 
 function buildTimeline(d: BackendDossier): CaseStatusTimelineItem[] {
   const items: CaseStatusTimelineItem[] = [];
-
-  const createdStatus = mapStatus(d.case.status);
+  const status = mapStatus(d.case.status);
 
   items.push({
     at: d.case.created_at,
-    status: createdStatus,
+    status,
     title: "Case created",
   });
 
   if (typeof d.complaint === "string" && d.complaint.trim()) {
     items.push({
       at: d.case.created_at,
-      status: createdStatus,
+      status,
       title: "Complaint recorded",
     });
   }
@@ -99,7 +99,7 @@ function buildTimeline(d: BackendDossier): CaseStatusTimelineItem[] {
   if (d.crime_scene?.exists) {
     items.push({
       at: d.case.created_at,
-      status: createdStatus,
+      status,
       title: "Crime scene report attached",
       description: d.crime_scene.report ?? undefined,
     });
@@ -107,7 +107,7 @@ function buildTimeline(d: BackendDossier): CaseStatusTimelineItem[] {
     if (d.crime_scene.is_approved === true) {
       items.push({
         at: d.case.created_at,
-        status: createdStatus,
+        status,
         title: "Crime scene approved",
       });
     }
@@ -116,7 +116,7 @@ function buildTimeline(d: BackendDossier): CaseStatusTimelineItem[] {
   if (d.solve_request?.submitted_at) {
     items.push({
       at: d.solve_request.submitted_at,
-      status: createdStatus,
+      status,
       title: "Solve request submitted",
       description: d.solve_request.note || undefined,
     });
@@ -125,7 +125,7 @@ function buildTimeline(d: BackendDossier): CaseStatusTimelineItem[] {
   if (d.captain_decision?.decided_at) {
     items.push({
       at: d.captain_decision.decided_at,
-      status: createdStatus,
+      status,
       title: "Captain decision recorded",
       description: d.captain_decision.comment || undefined,
     });
@@ -133,7 +133,7 @@ function buildTimeline(d: BackendDossier): CaseStatusTimelineItem[] {
     if (d.captain_decision.chief_at) {
       items.push({
         at: d.captain_decision.chief_at,
-        status: createdStatus,
+        status,
         title: "Chief review",
         description: d.captain_decision.chief_comment || undefined,
       });
@@ -143,12 +143,14 @@ function buildTimeline(d: BackendDossier): CaseStatusTimelineItem[] {
   if (d.trial?.judged_at) {
     const punishment =
       d.trial.punishment_title || d.trial.punishment_description
-        ? `${d.trial.punishment_title}${d.trial.punishment_description ? ` — ${d.trial.punishment_description}` : ""}`
+        ? `${d.trial.punishment_title}${
+            d.trial.punishment_description ? ` — ${d.trial.punishment_description}` : ""
+          }`
         : undefined;
 
     items.push({
       at: d.trial.judged_at,
-      status: createdStatus,
+      status,
       title: d.trial.verdict === "GUILTY" ? "Trial verdict: Guilty" : "Trial verdict: Innocent",
       description: punishment,
     });
@@ -163,7 +165,6 @@ export async function trackCaseStatus(caseIdOrCode: string): Promise<CaseStatusR
 
   try {
     const { data } = await apiClient.get<BackendDossier>(`/cases/${id}/dossier/`);
-
     const currentStatus = mapStatus(data.case.status);
 
     return {
@@ -175,7 +176,11 @@ export async function trackCaseStatus(caseIdOrCode: string): Promise<CaseStatusR
       updatedAt: undefined,
       timeline: buildTimeline(data),
     };
-  } catch {
-    return null;
+  } catch (err) {
+    if (axios.isAxiosError(err)) {
+      const status = err.response?.status;
+      if (status === 404 || status === 400) return null;
+    }
+    throw err;
   }
 }

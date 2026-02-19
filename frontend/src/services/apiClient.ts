@@ -1,36 +1,78 @@
-import axios from "axios";
-import { getToken, clearToken } from "../features/auth/authStorage";
+import axios, { AxiosError, type AxiosRequestConfig } from "axios";
+import { clearToken, getRefreshToken, getToken, setToken } from "../features/auth/authStorage";
 
+type RefreshResponse = { access: string };
+
+type RetryConfig = AxiosRequestConfig & {
+  _retry?: boolean;
+};
 
 export const apiClient = axios.create({
   baseURL: "http://127.0.0.1:8000/api",
   headers: { "Content-Type": "application/json" },
 });
 
+let refreshPromise: Promise<string> | null = null;
 
-// ✅ Attach token to every request
+async function refreshAccessToken(): Promise<string> {
+  const refresh = getRefreshToken();
+  if (!refresh) throw new Error("No refresh token");
+
+  const { data } = await axios.post<RefreshResponse>(
+    "http://127.0.0.1:8000/api/token/refresh/",
+    { refresh },
+    { headers: { "Content-Type": "application/json" } },
+  );
+
+  if (!data?.access) throw new Error("No access token in refresh response");
+
+  setToken(data.access);
+  return data.access;
+}
+
 apiClient.interceptors.request.use((config) => {
   const token = getToken();
   if (token) {
     config.headers = config.headers ?? {};
-    config.headers.Authorization = `Bearer ${token}`;
+    (config.headers as Record<string, string>).Authorization = `Bearer ${token}`;
   }
   return config;
 });
 
-// ✅ Handle common errors (401/403/500...)
 apiClient.interceptors.response.use(
   (response) => response,
-  (error) => {
-    const status = error?.response?.status;
+  async (error: AxiosError) => {
+    const status = error.response?.status;
+    const originalRequest = error.config as RetryConfig | undefined;
 
-    // If token is invalid/expired
-    if (status === 401) {
-      clearToken();
-      // We do NOT navigate here because apiClient is not a React file.
-      // The UI layer (pages) will handle redirect if needed.
+    if (!originalRequest) return Promise.reject(error);
+
+    const url = String(originalRequest.url ?? "");
+    const isAuthRequest =
+      url.includes("/auth/login/") || url.includes("/token/") || url.includes("/auth/register/");
+
+    if (status !== 401 || originalRequest._retry || isAuthRequest) {
+      return Promise.reject(error);
     }
 
-    return Promise.reject(error);
+    originalRequest._retry = true;
+
+    try {
+      if (!refreshPromise) {
+        refreshPromise = refreshAccessToken().finally(() => {
+          refreshPromise = null;
+        });
+      }
+
+      const newAccess = await refreshPromise;
+
+      originalRequest.headers = originalRequest.headers ?? {};
+      (originalRequest.headers as Record<string, string>).Authorization = `Bearer ${newAccess}`;
+
+      return apiClient.request(originalRequest);
+    } catch (e) {
+      clearToken();
+      return Promise.reject(e);
+    }
   },
 );

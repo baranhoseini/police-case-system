@@ -7,6 +7,7 @@ import Button from "../components/Button";
 
 import { trackCaseStatus, type CaseStatusResult } from "../services/caseStatusService";
 import { formatCaseStatus, formatComplaintType } from "../services/casesService";
+import { getApiErrorMessage } from "../services/apiErrors";
 
 export default function CaseComplaintsStatusPage() {
   const [query, setQuery] = useState("");
@@ -20,16 +21,20 @@ export default function CaseComplaintsStatusPage() {
 
     setLoading(true);
     setError(null);
+
     try {
       const data = await trackCaseStatus(q);
+
       if (!data) {
         setResult(null);
         setError("No case found for this tracking code.");
         return;
       }
+
       setResult(data);
-    } catch {
-      setError("Failed to load status. Please try again.");
+    } catch (err) {
+      setResult(null);
+      setError(getApiErrorMessage(err));
     } finally {
       setLoading(false);
     }

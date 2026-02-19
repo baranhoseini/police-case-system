@@ -22,6 +22,12 @@ export const MODULES: ModuleInfo[] = [
     to: "/detective-board",
   },
   {
+    key: "INTAKE",
+    title: "Intake",
+    description: "Submit and review complaints.",
+    to: "/intake/complaints",
+  },
+  {
     key: "CASE_STATUS",
     title: "Case Status",
     description: "Track the status of cases and complaints.",
