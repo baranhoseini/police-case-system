@@ -1,19 +1,22 @@
+import { apiClient } from "./apiClient";
 
 export type LoginPayload = {
-  email: string;
+  email: string; 
   password: string;
 };
 
 export type LoginResponse = {
-  token: string;
+  access: string;
+  refresh: string;
+  user: unknown;
 };
 
 export async function login(payload: LoginPayload): Promise<LoginResponse> {
-  // When backend is ready, replace with:
-  // const { data } = await apiClient.post<LoginResponse>("/auth/login", payload);
-  // return data;
+  const body = {
+    identifier: payload.email.trim(),
+    password: payload.password,
+  };
 
-  // ✅ mock (temporary)
-  await new Promise((r) => setTimeout(r, 300));
-  return { token: `fake-token:${payload.email}:${Date.now()}` };
+  const { data } = await apiClient.post<LoginResponse>("/auth/login/", body);
+  return data;
 }

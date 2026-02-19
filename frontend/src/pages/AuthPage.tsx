@@ -9,6 +9,7 @@ import Input from "../components/Input";
 import { useAuth } from "../features/auth/useAuth";
 import { login } from "../services/authService";
 import { getApiErrorMessage } from "../services/apiErrors";
+import { setRefreshToken } from "../features/auth/authStorage";
 
 import {
   loginSchema,
@@ -79,6 +80,7 @@ function SignInForm() {
   const {
     register,
     handleSubmit,
+    setError,
     formState: { errors, isSubmitting },
   } = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
@@ -88,10 +90,13 @@ function SignInForm() {
   const onSubmit = async (values: LoginFormValues) => {
     try {
       const res = await login(values);
-      signIn(res.token);
+      setRefreshToken(res.refresh);
+      signIn(res.access);
       navigate("/dashboard");
     } catch (err) {
-      alert(getApiErrorMessage(err));
+      const msg = getApiErrorMessage(err);
+      // نمایش خطای لاگین زیر فیلد username/email
+      setError("email", { type: "server", message: msg });
     }
   };
 
@@ -99,12 +104,13 @@ function SignInForm() {
     <Card title="Welcome back">
       <form onSubmit={handleSubmit(onSubmit)} style={{ display: "grid", gap: 12 }}>
         <Input
-          label="Email"
-          placeholder="you@example.com"
-          autoComplete="email"
+          label="username"
+          placeholder="your username"
+          autoComplete="username"
           {...register("email")}
           error={errors.email?.message}
         />
+
         <Input
           label="Password"
           placeholder="••••••••"
@@ -114,7 +120,9 @@ function SignInForm() {
           error={errors.password?.message}
         />
 
-        <Button disabled={isSubmitting}>{isSubmitting ? "Signing in..." : "Sign in"}</Button>
+        <Button type="submit" disabled={isSubmitting}>
+          {isSubmitting ? "Signing in..." : "Sign in"}
+        </Button>
 
         <p style={{ margin: 0, fontSize: 13, color: "var(--muted)" }}>
           By continuing, you agree to the terms and privacy policy.
@@ -186,7 +194,7 @@ function SignUpForm() {
           error={errors.confirmPassword?.message}
         />
 
-        <Button disabled={isSubmitting}>
+        <Button type="submit" disabled={isSubmitting}>
           {isSubmitting ? "Creating account..." : "Create account"}
         </Button>
       </form>
