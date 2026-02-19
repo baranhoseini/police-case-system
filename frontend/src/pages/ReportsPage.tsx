@@ -7,6 +7,7 @@ import Button from "../components/Button";
 
 import type { CaseReport } from "../types/report";
 import { generateCaseReport } from "../services/reportsService";
+import { getApiErrorMessage } from "../services/apiErrors";
 
 export default function ReportsPage() {
   const [caseId, setCaseId] = useState("C-1001");
@@ -20,11 +21,13 @@ export default function ReportsPage() {
 
     setLoading(true);
     setError(null);
+
     try {
       const data = await generateCaseReport(id);
       setReport(data);
-    } catch {
-      setError("Failed to generate report. Please try again.");
+    } catch (e) {
+      setReport(null);
+      setError(getApiErrorMessage(e));
     } finally {
       setLoading(false);
     }
@@ -42,7 +45,7 @@ export default function ReportsPage() {
               label="Case ID"
               value={caseId}
               onChange={(e) => setCaseId(e.target.value)}
-              placeholder="e.g. C-1001"
+              placeholder="e.g. C-1"
             />
 
             <div style={{ alignSelf: "end" }}>
@@ -58,7 +61,9 @@ export default function ReportsPage() {
             </div>
           </div>
 
-          {error ? <p style={{ marginTop: 10, color: "crimson" }}>{error}</p> : null}
+          {error ? (
+            <p style={{ marginTop: 10, color: "crimson", fontWeight: 800 }}>{error}</p>
+          ) : null}
         </Card>
 
         <div className="print-area">

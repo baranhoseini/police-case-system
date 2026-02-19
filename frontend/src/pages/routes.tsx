@@ -91,6 +91,16 @@ export default function AppRoutes() {
           </ProtectedRoute>
         }
       />
+
+      <Route
+        path="/intake/complaints/new"
+        element={
+          <ProtectedRoute>
+            <IntakeComplaintDetailsPage />
+          </ProtectedRoute>
+        }
+      />
+
       <Route
         path="/intake/complaints/:id"
         element={
