@@ -10,7 +10,7 @@ User = get_user_model()
 class UserPublicSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ("id", "username", "email", "phone", "national_id")
+        fields = ("id","username","first_name","last_name","email","phone","national_id")
 
 
 class RegisterSerializer(serializers.ModelSerializer):
@@ -18,7 +18,16 @@ class RegisterSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ("username", "email", "phone", "national_id", "password")
+        fields = ("username","first_name","last_name","email","phone","national_id","password")
+
+    def validate(self, attrs):
+        # Enforce spec-required fields (non-empty)
+        for f in ("username","first_name","last_name","email","phone","national_id"):
+            v = (attrs.get(f) or "").strip()
+            if not v:
+                raise serializers.ValidationError({f: "This field is required."})
+            attrs[f] = v
+        return attrs
 
     def create(self, validated_data):
         password = validated_data.pop("password")
