@@ -1,7 +1,7 @@
 import { apiClient } from "./apiClient";
 
 export type LoginPayload = {
-  email: string;
+  identifier: string;
   password: string;
 };
 
@@ -12,12 +12,18 @@ export type LoginResponse = {
 };
 
 export type RegisterPayload = {
-  fullName: string;
+  username: string;
+  first_name: string;
+  last_name: string;
   email: string;
+  phone: string;
+  national_id: string;
   password: string;
 };
 
 export type RegisterResponse = {
+  id?: number;
+  username?: string;
   access?: string;
   refresh?: string;
   user?: unknown;
@@ -25,7 +31,7 @@ export type RegisterResponse = {
 
 export async function login(payload: LoginPayload): Promise<LoginResponse> {
   const body = {
-    identifier: payload.email.trim(),
+    identifier: payload.identifier.trim(),
     password: payload.password,
   };
 
@@ -35,8 +41,12 @@ export async function login(payload: LoginPayload): Promise<LoginResponse> {
 
 export async function register(payload: RegisterPayload): Promise<RegisterResponse> {
   const body = {
-    full_name: payload.fullName.trim(),
+    username: payload.username.trim(),
+    first_name: payload.first_name.trim(),
+    last_name: payload.last_name.trim(),
     email: payload.email.trim(),
+    phone: payload.phone.trim(),
+    national_id: payload.national_id.trim(),
     password: payload.password,
   };
 
