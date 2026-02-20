@@ -84,7 +84,7 @@ function SignInForm() {
     formState: { errors, isSubmitting },
   } = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
-    defaultValues: { email: "", password: "" },
+    defaultValues: { identifier: "", password: "" },
   });
 
   const onSubmit = async (values: LoginFormValues) => {
@@ -95,7 +95,7 @@ function SignInForm() {
       navigate("/dashboard");
     } catch (err) {
       const msg = getApiErrorMessage(err);
-      setError("email", { type: "server", message: msg });
+      setError("identifier", { type: "server", message: msg });
     }
   };
 
@@ -103,13 +103,12 @@ function SignInForm() {
     <Card title="Welcome back">
       <form onSubmit={handleSubmit(onSubmit)} style={{ display: "grid", gap: 12 }}>
         <Input
-          label="username"
-          placeholder="your username"
+          label="Username / Email / Phone / National ID"
+          placeholder="username / email / phone / national id"
           autoComplete="username"
-          {...register("email")}
-          error={errors.email?.message}
+          {...register("identifier")}
+          error={errors.identifier?.message}
         />
-
         <Input
           label="Password"
           placeholder="••••••••"
@@ -119,13 +118,9 @@ function SignInForm() {
           error={errors.password?.message}
         />
 
-        <Button type="submit" disabled={isSubmitting}>
+        <Button disabled={isSubmitting} type="submit">
           {isSubmitting ? "Signing in..." : "Sign in"}
         </Button>
-
-        <p style={{ margin: 0, fontSize: 13, color: "var(--muted)" }}>
-          By continuing, you agree to the terms and privacy policy.
-        </p>
       </form>
     </Card>
   );
@@ -142,18 +137,31 @@ function SignUpForm() {
     formState: { errors, isSubmitting },
   } = useForm<SignupFormValues>({
     resolver: zodResolver(signupSchema),
-    defaultValues: { fullName: "", email: "", password: "", confirmPassword: "" },
+    defaultValues: {
+      username: "",
+      firstName: "",
+      lastName: "",
+      email: "",
+      phone: "",
+      nationalId: "",
+      password: "",
+      confirmPassword: "",
+    },
   });
 
   const onSubmit = async (values: SignupFormValues) => {
     try {
       await registerUser({
-        fullName: values.fullName,
+        username: values.username,
+        first_name: values.firstName,
+        last_name: values.lastName,
         email: values.email,
+        phone: values.phone,
+        national_id: values.nationalId,
         password: values.password,
       });
 
-      const res = await login({ email: values.email, password: values.password });
+      const res = await login({ identifier: values.username, password: values.password });
       setRefreshToken(res.refresh);
       signIn(res.access);
       navigate("/dashboard");
@@ -169,12 +177,29 @@ function SignUpForm() {
     <Card title="Create your account">
       <form onSubmit={handleSubmit(onSubmit)} style={{ display: "grid", gap: 12 }}>
         <Input
-          label="Full name"
-          placeholder="John Doe"
-          autoComplete="name"
-          {...register("fullName")}
-          error={errors.fullName?.message}
+          label="Username"
+          placeholder="your_username"
+          autoComplete="username"
+          {...register("username")}
+          error={errors.username?.message}
         />
+        <div style={{ display: "grid", gap: 10, gridTemplateColumns: "1fr 1fr" }}>
+          <Input
+            label="First name"
+            placeholder="John"
+            autoComplete="given-name"
+            {...register("firstName")}
+            error={errors.firstName?.message}
+          />
+          <Input
+            label="Last name"
+            placeholder="Doe"
+            autoComplete="family-name"
+            {...register("lastName")}
+            error={errors.lastName?.message}
+          />
+        </div>
+
         <Input
           label="Email"
           placeholder="you@example.com"
@@ -182,6 +207,23 @@ function SignUpForm() {
           {...register("email")}
           error={errors.email?.message}
         />
+
+        <div style={{ display: "grid", gap: 10, gridTemplateColumns: "1fr 1fr" }}>
+          <Input
+            label="Phone"
+            placeholder="+49..."
+            autoComplete="tel"
+            {...register("phone")}
+            error={errors.phone?.message}
+          />
+          <Input
+            label="National ID"
+            placeholder="ID number"
+            autoComplete="off"
+            {...register("nationalId")}
+            error={errors.nationalId?.message}
+          />
+        </div>
 
         <div style={{ display: "grid", gap: 10 }}>
           <Input
@@ -204,8 +246,8 @@ function SignUpForm() {
           error={errors.confirmPassword?.message}
         />
 
-        <Button type="submit" disabled={isSubmitting}>
-          {isSubmitting ? "Creating account..." : "Create account"}
+        <Button disabled={isSubmitting} type="submit">
+          {isSubmitting ? "Creating..." : "Create account"}
         </Button>
       </form>
     </Card>
