@@ -1,7 +1,7 @@
 import { apiClient } from "./apiClient";
 
 export type LoginPayload = {
-  email: string;
+  identifier: string;
   password: string;
 };
 
@@ -12,7 +12,9 @@ export type LoginResponse = {
 };
 
 export type RegisterPayload = {
-  fullName: string;
+  username: string;
+  first_name: string;
+  last_name: string;
   email: string;
   phone: string;
   nationalId: string;
@@ -21,6 +23,8 @@ export type RegisterPayload = {
 
 
 export type RegisterResponse = {
+  id?: number;
+  username?: string;
   access?: string;
   refresh?: string;
   user?: unknown;
@@ -28,7 +32,7 @@ export type RegisterResponse = {
 
 export async function login(payload: LoginPayload): Promise<LoginResponse> {
   const body = {
-    identifier: payload.email.trim(),
+    identifier: payload.identifier.trim(),
     password: payload.password,
   };
 
