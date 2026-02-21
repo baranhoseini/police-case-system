@@ -5,14 +5,10 @@ import Card from "../components/Card";
 import Button from "../components/Button";
 import MainLayout from "../components/layout/MainLayout";
 import { getHomeStats, type HomeStats } from "../services/statsService";
-import { apiClient } from "../services/apiClient";
 
 export default function HomePage() {
   const [stats, setStats] = useState<HomeStats | null>(null);
   const [loading, setLoading] = useState(true);
-
-  const [apiTestLoading, setApiTestLoading] = useState(false);
-  const [apiTestResult, setApiTestResult] = useState<string>("");
 
   useEffect(() => {
     let mounted = true;
@@ -32,50 +28,9 @@ export default function HomePage() {
     };
   }, []);
 
-  const testApi = async () => {
-    try {
-      setApiTestLoading(true);
-      setApiTestResult("");
-      const res = await apiClient.get("/stats/");
-      setApiTestResult(JSON.stringify(res.data, null, 2));
-    } catch (e) {
-      setApiTestResult("ERROR");
-    } finally {
-      setApiTestLoading(false);
-    }
-  };
-
   return (
     <MainLayout>
       <Hero />
-
-      <section style={{ marginBottom: 18 }}>
-        <Card title="API Test (stats)">
-          <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
-            <Button type="button" onClick={testApi} disabled={apiTestLoading}>
-              {apiTestLoading ? "Testing..." : "Test /api/stats/"}
-            </Button>
-            <div style={{ fontSize: 13, color: "var(--muted)" }}>
-              After login, this should hit 127.0.0.1:8000 and include Authorization header.
-            </div>
-          </div>
-          <pre
-            style={{
-              marginTop: 12,
-              padding: 12,
-              borderRadius: 12,
-              border: "1px solid var(--border)",
-              background: "white",
-              overflow: "auto",
-              maxHeight: 240,
-              fontSize: 12,
-            }}
-          >
-            {apiTestResult || "Click the button to test."}
-          </pre>
-        </Card>
-      </section>
-
       <StatsSection stats={stats} loading={loading} />
       <FeaturesSection />
     </MainLayout>

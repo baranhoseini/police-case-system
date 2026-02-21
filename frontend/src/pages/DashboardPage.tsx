@@ -9,7 +9,7 @@ import { canAccessModule } from "../features/auth/permissions";
 import { MODULES } from "../features/modules/moduleRegistry";
 
 export default function DashboardPage() {
-  const { role, setRole } = useAuth();
+  const { role } = useAuth();
   const [q, setQ] = useState("");
 
   const visibleModules = useMemo(() => {
@@ -30,37 +30,6 @@ export default function DashboardPage() {
           <p style={{ marginTop: 0, color: "var(--muted)" }}>
             Current role: <strong>{role ?? "Unknown"}</strong>
           </p>
-
-          {/* فقط برای تست، بعداً حذف می‌شود */}
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
-            {(
-              [
-                "CITIZEN",
-                "POLICE_OFFICER",
-                "DETECTIVE",
-                "CAPTAIN",
-                "JUDGE",
-                "CHIEF",
-                "ADMIN",
-              ] as const
-            ).map((r) => (
-              <button
-                key={r}
-                type="button"
-                onClick={() => setRole(r)}
-                style={{
-                  border: "1px solid var(--border)",
-                  padding: "8px 10px",
-                  borderRadius: 10,
-                  cursor: "pointer",
-                  background: "white",
-                  fontWeight: 700,
-                }}
-              >
-                {r}
-              </button>
-            ))}
-          </div>
         </Card>
 
         <Card title="Modules">

@@ -7,8 +7,10 @@ type RetryConfig = AxiosRequestConfig & {
   _retry?: boolean;
 };
 
+const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? "/api").replace(/\/$/, "");
+
 export const apiClient = axios.create({
-  baseURL: "http://127.0.0.1:8000/api",
+  baseURL: API_BASE_URL,
   headers: { "Content-Type": "application/json" },
 });
 
@@ -19,7 +21,7 @@ async function refreshAccessToken(): Promise<string> {
   if (!refresh) throw new Error("No refresh token");
 
   const { data } = await axios.post<RefreshResponse>(
-    "http://127.0.0.1:8000/api/token/refresh/",
+    `${API_BASE_URL}/token/refresh/`,
     { refresh },
     { headers: { "Content-Type": "application/json" } },
   );

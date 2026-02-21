@@ -89,7 +89,6 @@ function SignInForm() {
 
   const onSubmit = async (values: LoginFormValues) => {
     try {
-      // loginSchema uses "email" field name, but it is actually the "identifier"
       const res = await login(values);
       setRefreshToken(res.refresh);
       signIn(res.access);
@@ -162,16 +161,12 @@ function SignUpForm() {
         password: values.password,
       });
 
-      // Auto sign-in after registration:
-      // login() expects the identifier field named "email" in LoginFormValues.
-      // Your login service sends identifier to backend (username/email/phone/national_id).
-      const res = await login({ email: values.email, password: values.password });
+      const res = await login({ identifier: values.email, password: values.password });
       setRefreshToken(res.refresh);
       signIn(res.access);
       navigate("/dashboard");
     } catch (err) {
       const msg = getApiErrorMessage(err);
-      // Show error on email field (usually best common place)
       setError("email", { type: "server", message: msg });
     }
   };
