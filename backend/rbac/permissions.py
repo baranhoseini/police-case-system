@@ -6,8 +6,14 @@ from rbac.models import UserRole
 
 
 def user_has_role(user, *roles: str) -> bool:
-    if not user or not user.is_authenticated:
+    """RBAC helper.
+
+    Superusers should always have access (useful for Django admin-created superusers).
+    """
+    if not user or not getattr(user, "is_authenticated", False):
         return False
+    if getattr(user, "is_superuser", False):
+        return True
     return UserRole.objects.filter(user=user, role__name__in=roles).exists()
 
 

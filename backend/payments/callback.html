@@ -1,0 +1,22 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Payment Callback</title>
+  </head>
+  <body style="font-family: system-ui; margin: 40px">
+    {% if ok %}
+      <h2>✅ Payment Successful</h2>
+    {% else %}
+      <h2>❌ Payment Failed / Canceled</h2>
+    {% endif %}
+
+    <p><b>Status:</b> {{ status }}</p>
+    <p><b>Authority:</b> {{ authority }}</p>
+    <p><b>RefID:</b> {{ ref_id }}</p>
+
+    <hr />
+    <h3>All Params</h3>
+    <pre>{{ params }}</pre>
+  </body>
+</html>

@@ -22,15 +22,11 @@ class Suspect(models.Model):
     photo_url = models.URLField(blank=True)
     chase_started_at = models.DateTimeField(default=timezone.now)
 
+    # persisted inputs (editable)
     max_l = models.PositiveIntegerField(default=1)
     max_d = models.PositiveIntegerField(default=1)
 
     objects = SuspectQuerySet.as_manager()
-
-    def _group_qs(self):
-        if self.national_id:
-            return Suspect.objects.filter(national_id=self.national_id)
-        return Suspect.objects.filter(full_name=self.full_name, phone=self.phone)
 
     @property
     def is_most_wanted(self) -> bool:
@@ -43,28 +39,6 @@ class Suspect(models.Model):
     @property
     def reward_amount_rials(self) -> int:
         return self.rank_score * 20_000_000
-
-    def save(self, *args, **kwargs):
-        super().save(*args, **kwargs)
-
-        now = timezone.now()
-        qs = self._group_qs().select_related("case").only("id", "chase_started_at", "case__crime_level")
-
-        max_l = 1
-        max_d = 1
-
-        for s in qs:
-            if s.chase_started_at:
-                days = (now - s.chase_started_at).days
-                max_l = max(max_l, days if days > 0 else 1)
-
-            crime_level = getattr(s.case, "crime_level", 1) if s.case_id else 1
-            max_d = max(max_d, int(crime_level or 1))
-
-        qs.update(max_l=max_l, max_d=max_d)
-
-        self.max_l = max_l
-        self.max_d = max_d
 
     def __str__(self) -> str:
         return self.full_name

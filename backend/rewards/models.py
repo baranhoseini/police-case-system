@@ -5,7 +5,6 @@ import secrets
 
 
 class RewardTip(models.Model):
-    # --- Status constants (the view expects these) ---
     STATUS_SUBMITTED = "SUBMITTED"
     STATUS_OFFICER_REJECTED = "OFFICER_REJECTED"
     STATUS_OFFICER_APPROVED = "OFFICER_APPROVED"
@@ -18,31 +17,30 @@ class RewardTip(models.Model):
         (STATUS_DETECTIVE_APPROVED, "Detective Approved"),
     ]
 
-    # Who submitted the tip (authenticated user)
     citizen = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.PROTECT,
         related_name="tips",
     )
 
-    # Citizen-provided identity details (the submit endpoint sends these)
     citizen_name = models.CharField(max_length=200)
     citizen_national_id = models.CharField(max_length=50)
     citizen_phone = models.CharField(max_length=50)
 
-    # Suspect & message details (the submit endpoint sends these)
     suspect_name = models.CharField(max_length=200)
     suspect_last_seen = models.CharField(max_length=500, blank=True, default="")
     message = models.TextField()
 
     status = models.CharField(max_length=30, choices=STATUS, default=STATUS_SUBMITTED)
-
-    # Generated upon detective approval (returned to citizen for lookup)
     unique_code = models.CharField(max_length=32, blank=True, default="")
-
     created_at = models.DateTimeField(default=timezone.now)
 
-    # Officer review fields
+    def __init__(self, *args, **kwargs):
+        # Backward-compat: tests/older code may pass `info` instead of `message`.
+        if "info" in kwargs and "message" not in kwargs:
+            kwargs["message"] = kwargs.pop("info")
+        super().__init__(*args, **kwargs)
+
     reviewed_by_officer = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.PROTECT,
@@ -53,7 +51,6 @@ class RewardTip(models.Model):
     officer_reviewed_at = models.DateTimeField(null=True, blank=True)
     officer_note = models.TextField(blank=True, default="")
 
-    # Detective approval fields
     approved_by_detective = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.PROTECT,

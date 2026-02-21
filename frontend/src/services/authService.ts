@@ -14,8 +14,11 @@ export type LoginResponse = {
 export type RegisterPayload = {
   fullName: string;
   email: string;
+  phone: string;
+  nationalId: string;
   password: string;
 };
+
 
 export type RegisterResponse = {
   access?: string;
@@ -33,13 +36,26 @@ export async function login(payload: LoginPayload): Promise<LoginResponse> {
   return data;
 }
 
-export async function register(payload: RegisterPayload): Promise<RegisterResponse> {
+
+export async function register(payload: {
+  username: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone: string;
+  nationalId: string;
+  password: string;
+}) {
   const body = {
-    full_name: payload.fullName.trim(),
+    username: payload.username.trim(),
+    first_name: payload.firstName.trim(),
+    last_name: payload.lastName.trim(),
     email: payload.email.trim(),
+    phone: payload.phone.trim(),
+    national_id: payload.nationalId.trim(),
     password: payload.password,
   };
 
-  const { data } = await apiClient.post<RegisterResponse>("/auth/register/", body);
+  const { data } = await apiClient.post("/auth/register/", body);
   return data;
 }

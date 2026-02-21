@@ -1,0 +1,26 @@
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: police_db
+      POSTGRES_USER: police_user
+      POSTGRES_PASSWORD: police_pass
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  backend:
+    build: ./backend
+    environment:
+      DEBUG: "1"
+      DJANGO_SETTINGS_MODULE: config.settings
+      DATABASE_URL: postgres://police_user:police_pass@db:5432/police_db
+      ALLOWED_HOSTS: "localhost,127.0.0.1"
+    ports:
+      - "8000:8000"
+    depends_on:
+      - db
+
+volumes:
+  pgdata:

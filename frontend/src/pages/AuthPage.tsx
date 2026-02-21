@@ -89,6 +89,7 @@ function SignInForm() {
 
   const onSubmit = async (values: LoginFormValues) => {
     try {
+      // loginSchema uses "email" field name, but it is actually the "identifier"
       const res = await login(values);
       setRefreshToken(res.refresh);
       signIn(res.access);
@@ -103,8 +104,8 @@ function SignInForm() {
     <Card title="Welcome back">
       <form onSubmit={handleSubmit(onSubmit)} style={{ display: "grid", gap: 12 }}>
         <Input
-          label="username"
-          placeholder="your username"
+          label="Identifier"
+          placeholder="username / email / phone / national id"
           autoComplete="username"
           {...register("email")}
           error={errors.email?.message}
@@ -142,45 +143,96 @@ function SignUpForm() {
     formState: { errors, isSubmitting },
   } = useForm<SignupFormValues>({
     resolver: zodResolver(signupSchema),
-    defaultValues: { fullName: "", email: "", password: "", confirmPassword: "" },
+    defaultValues: {
+      username: "",
+      firstName: "",
+      lastName: "",
+      email: "",
+      phone: "",
+      nationalId: "",
+      password: "",
+      confirmPassword: "",
+    },
   });
 
   const onSubmit = async (values: SignupFormValues) => {
     try {
       await registerUser({
-        fullName: values.fullName,
+        username: values.username,
+        firstName: values.firstName,
+        lastName: values.lastName,
         email: values.email,
+        phone: values.phone,
+        nationalId: values.nationalId,
         password: values.password,
       });
 
+      // Auto sign-in after registration:
+      // login() expects the identifier field named "email" in LoginFormValues.
+      // Your login service sends identifier to backend (username/email/phone/national_id).
       const res = await login({ email: values.email, password: values.password });
       setRefreshToken(res.refresh);
       signIn(res.access);
       navigate("/dashboard");
     } catch (err) {
       const msg = getApiErrorMessage(err);
+      // Show error on email field (usually best common place)
       setError("email", { type: "server", message: msg });
     }
   };
 
-  const passwordHint = useMemo(() => "Use at least 6 characters. Avoid common passwords.", []);
+  const passwordHint = useMemo(() => "Use at least 8 characters. Avoid common passwords.", []);
 
   return (
     <Card title="Create your account">
       <form onSubmit={handleSubmit(onSubmit)} style={{ display: "grid", gap: 12 }}>
         <Input
-          label="Full name"
-          placeholder="John Doe"
-          autoComplete="name"
-          {...register("fullName")}
-          error={errors.fullName?.message}
+          label="Username"
+          placeholder="your username"
+          autoComplete="username"
+          {...register("username")}
+          error={errors.username?.message}
         />
+
+        <div style={{ display: "grid", gap: 12, gridTemplateColumns: "1fr 1fr" }}>
+          <Input
+            label="First name"
+            placeholder="John"
+            autoComplete="given-name"
+            {...register("firstName")}
+            error={errors.firstName?.message}
+          />
+          <Input
+            label="Last name"
+            placeholder="Doe"
+            autoComplete="family-name"
+            {...register("lastName")}
+            error={errors.lastName?.message}
+          />
+        </div>
+
         <Input
           label="Email"
           placeholder="you@example.com"
           autoComplete="email"
           {...register("email")}
           error={errors.email?.message}
+        />
+
+        <Input
+          label="Phone"
+          placeholder="+49..."
+          autoComplete="tel"
+          {...register("phone")}
+          error={errors.phone?.message}
+        />
+
+        <Input
+          label="National ID"
+          placeholder="National ID"
+          autoComplete="off"
+          {...register("nationalId")}
+          error={errors.nationalId?.message}
         />
 
         <div style={{ display: "grid", gap: 10 }}>

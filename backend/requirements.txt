@@ -1,6 +1,6 @@
 asgiref==3.11.0
 attrs==25.4.0
-Django==6.0.1
+Django==5.2.11
 django-cors-headers==4.9.0
 djangorestframework==3.16.1
 djangorestframework_simplejwt==5.5.1
@@ -14,3 +14,5 @@ referencing==0.37.0
 rpds-py==0.30.0
 sqlparse==0.5.5
 uritemplate==4.2.0
+dj-database-url>=2.0.0
+psycopg2-binary>=2.9.9
