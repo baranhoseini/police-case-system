@@ -1,0 +1,17 @@
+<!doctype html>
+<html>
+  <head><meta charset="utf-8" /><title>Mock Gateway</title></head>
+  <body style="font-family: system-ui; margin: 40px">
+    <h2>Mock Payment Gateway</h2>
+    <p><b>Payment:</b> {{ payment_id }}</p>
+    <p><b>Callback:</b></p>
+    <pre style="white-space: pre-wrap">{{ callback }}</pre>
+
+    <p>
+      <a href="/payments/mock-gateway/pay/?payment_id={{ payment_id|urlencode }}&callback={{ callback|urlencode }}">✅ Pay</a>
+    </p>
+    <p>
+      <a href="/payments/mock-gateway/fail/?payment_id={{ payment_id|urlencode }}&callback={{ callback|urlencode }}">❌ Fail</a>
+    </p>
+  </body>
+</html>

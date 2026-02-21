@@ -17,9 +17,10 @@ export type RegisterPayload = {
   last_name: string;
   email: string;
   phone: string;
-  national_id: string;
+  nationalId: string;
   password: string;
 };
+
 
 export type RegisterResponse = {
   id?: number;
@@ -39,17 +40,26 @@ export async function login(payload: LoginPayload): Promise<LoginResponse> {
   return data;
 }
 
-export async function register(payload: RegisterPayload): Promise<RegisterResponse> {
+
+export async function register(payload: {
+  username: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone: string;
+  nationalId: string;
+  password: string;
+}) {
   const body = {
     username: payload.username.trim(),
-    first_name: payload.first_name.trim(),
-    last_name: payload.last_name.trim(),
+    first_name: payload.firstName.trim(),
+    last_name: payload.lastName.trim(),
     email: payload.email.trim(),
     phone: payload.phone.trim(),
-    national_id: payload.national_id.trim(),
+    national_id: payload.nationalId.trim(),
     password: payload.password,
   };
 
-  const { data } = await apiClient.post<RegisterResponse>("/auth/register/", body);
+  const { data } = await apiClient.post("/auth/register/", body);
   return data;
 }

@@ -1,6 +1,8 @@
 from django.contrib import admin
 from django.urls import path, include
 from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
+from django.contrib import admin
+from django.urls import path, include
 
 urlpatterns = [
     path("admin/", admin.site.urls),
@@ -11,4 +13,5 @@ urlpatterns = [
     path("api/", include("config.api_urls")),
     path("api/suspects/", include("suspects.urls")),
     path("api/rewards/", include("rewards.urls")),
+    path("payments/", include("payments.urls")),
 ]
