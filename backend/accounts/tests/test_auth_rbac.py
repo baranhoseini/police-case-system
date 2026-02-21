@@ -6,6 +6,7 @@ from rbac.models import Role, UserRole
 
 User = get_user_model()
 
+
 class AuthRBACTests(APITestCase):
     @classmethod
     def setUpTestData(cls):
@@ -13,11 +14,14 @@ class AuthRBACTests(APITestCase):
         cls.superuser = User.objects.create_superuser(
             username="super1", email="super1@test.com", password="SuperPassw0rd!!"
         )
+
         cls.user = User.objects.create_user(
             username="user1",
             email="user1@test.com",
             national_id="NID1",
             phone="P1",
+            first_name="User",
+            last_name="One",
             password="UserPassw0rd!!",
         )
 
@@ -29,12 +33,17 @@ class AuthRBACTests(APITestCase):
                 "email": "baran2@test.com",
                 "phone": "222",
                 "national_id": "222",
+                "first_name": "Baran",
+                "last_name": "Hoseini",
                 "password": "Passw0rd!!",
             },
             format="json",
         )
-        self.assertEqual(resp.status_code, status.HTTP_201_CREATED)
+        print("REGISTER STATUS:", resp.status_code)
+        print("REGISTER DATA:", resp.data)
+        self.assertEqual(resp.status_code, status.HTTP_201_CREATED, resp.data)
         self.assertEqual(resp.data["username"], "baran2")
+    
 
     def test_login_by_email_returns_tokens(self):
         resp = self.client.post(
@@ -42,7 +51,7 @@ class AuthRBACTests(APITestCase):
             {"identifier": "user1@test.com", "password": "UserPassw0rd!!"},
             format="json",
         )
-        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+        self.assertEqual(resp.status_code, status.HTTP_200_OK, resp.data)
         self.assertIn("access", resp.data)
         self.assertIn("refresh", resp.data)
 
@@ -52,7 +61,7 @@ class AuthRBACTests(APITestCase):
             {"identifier": "user1", "password": "UserPassw0rd!!"},
             format="json",
         )
-        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+        self.assertEqual(resp.status_code, status.HTTP_200_OK, resp.data)
         self.assertIn("access", resp.data)
 
     def test_me_requires_auth(self):
