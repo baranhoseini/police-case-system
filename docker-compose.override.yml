@@ -2,3 +2,8 @@ services:
   backend:
     volumes:
       - ./backend:/app
+
+  frontend:
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
