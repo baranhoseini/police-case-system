@@ -1,9 +1,5 @@
 import { z } from "zod";
 
-/**
- * Spec: login with ONE of username / national_id / phone / email + password
- * We keep the field name 'identifier' internally, but the UI label can be "Username / Email / Phone / National ID".
- */
 export const loginSchema = z.object({
   email: z.string().min(1, "Identifier is required."),
   password: z.string().min(1, "Password is required."),

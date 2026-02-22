@@ -26,15 +26,14 @@ function mapComplaintType(_c: BackendCase): ComplaintType {
 }
 
 function mapCase(c: BackendCase): CaseSummary {
- return {
-  id: `C-${c.id}`,
-  numericId: c.id,
-  title: c.title,
-  status: mapStatus(c.status),
-  complaintType: mapComplaintType(c),
-  createdAt: c.created_at,
-  updatedAt: c.updated_at ?? undefined,
-};
+  return {
+    id: `C-${c.id}`,
+    title: c.title,
+    status: mapStatus(c.status),
+    complaintType: mapComplaintType(c),
+    createdAt: c.created_at,
+    updatedAt: c.updated_at ?? undefined,
+  };
 }
 
 export async function getCases(params: GetCasesParams): Promise<CaseSummary[]> {
