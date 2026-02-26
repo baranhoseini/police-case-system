@@ -12,8 +12,7 @@ export type ComplaintType =
   | "OTHER";
 
 export type CaseSummary = {
-  id: string;
-  numericId: number;
+  id: ID;
   title: string;
   status: CaseStatus;
   complaintType: ComplaintType;

@@ -159,7 +159,7 @@ function AddEvidenceCard({ defaultCaseId, onAdded }: { defaultCaseId: string; on
   const [caseId, setCaseId] = useState(defaultCaseId || "");
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
-  const [medicalImageUrl, setMedicalImageUrl] = useState("");
+
   const [kvKey, setKvKey] = useState("");
   const [kvValue, setKvValue] = useState("");
   const [identityFields, setIdentityFields] = useState<Record<string, string>>({});
@@ -205,7 +205,6 @@ function AddEvidenceCard({ defaultCaseId, onAdded }: { defaultCaseId: string; on
     setColor("");
     setSampleType("");
     setLabNotes("");
-    setMedicalImageUrl("");
     setMediaType("IMAGE");
     setUrl("");
     setSubmitError(null);
@@ -249,7 +248,6 @@ function AddEvidenceCard({ defaultCaseId, onAdded }: { defaultCaseId: string; on
           description: description.trim() || undefined,
           sampleType: sampleType.trim() || undefined,
           labNotes: labNotes.trim() || undefined,
-          imageUrl: medicalImageUrl.trim() || undefined,
         });
       }
 
@@ -373,40 +371,12 @@ function AddEvidenceCard({ defaultCaseId, onAdded }: { defaultCaseId: string; on
           </div>
         ) : null}
 
-
         {kind === "MEDICAL" ? (
-          <>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-              <Input
-                label="Sample type"
-                value={sampleType}
-                onChange={(e) => setSampleType(e.target.value)}
-                placeholder="e.g. Blood"
-              />
-              <Input
-                label="Lab notes"
-                value={labNotes}
-                onChange={(e) => setLabNotes(e.target.value)}
-                placeholder="Optional"
-              />
-            </div>
-
-    <MediaUploader mediaType="IMAGE" onUploaded={(r) => setMedicalImageUrl(r.url)} />
-
-    {medicalImageUrl ? (
-      <p style={{ margin: 0, fontSize: 13, color: "var(--muted)" }}>
-        Uploaded image URL: <code style={{ fontSize: 12 }}>{medicalImageUrl}</code>
-      </p>
-    ) : (
-      <p style={{ margin: 0, fontSize: 13, color: "crimson", fontWeight: 700 }}>
-        Medical evidence requires at least one image.
-      </p>
-    )}
-  </>
-) : null}
-
-
-       
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+            <Input label="Sample type" value={sampleType} onChange={(e) => setSampleType(e.target.value)} placeholder="e.g. Blood" />
+            <Input label="Lab notes" value={labNotes} onChange={(e) => setLabNotes(e.target.value)} placeholder="Optional" />
+          </div>
+        ) : null}
 
         {kind === "MEDIA" ? (
           <div style={{ display: "grid", gap: 12 }}>

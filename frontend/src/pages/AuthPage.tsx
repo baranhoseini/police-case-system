@@ -84,7 +84,7 @@ function SignInForm() {
     formState: { errors, isSubmitting },
   } = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
-    defaultValues: { identifier: "", password: "" },
+    defaultValues: { email: "", password: "" },
   });
 
   const onSubmit = async (values: LoginFormValues) => {
@@ -96,7 +96,7 @@ function SignInForm() {
       navigate("/dashboard");
     } catch (err) {
       const msg = getApiErrorMessage(err);
-      setError("identifier", { type: "server", message: msg });
+      setError("email", { type: "server", message: msg });
     }
   };
 
@@ -107,9 +107,10 @@ function SignInForm() {
           label="Identifier"
           placeholder="username / email / phone / national id"
           autoComplete="username"
-          {...register("identifier")}
-          error={errors.identifier?.message}
+          {...register("email")}
+          error={errors.email?.message}
         />
+
         <Input
           label="Password"
           placeholder="••••••••"
@@ -119,9 +120,13 @@ function SignInForm() {
           error={errors.password?.message}
         />
 
-        <Button disabled={isSubmitting} type="submit">
+        <Button type="submit" disabled={isSubmitting}>
           {isSubmitting ? "Signing in..." : "Sign in"}
         </Button>
+
+        <p style={{ margin: 0, fontSize: 13, color: "var(--muted)" }}>
+          By continuing, you agree to the terms and privacy policy.
+        </p>
       </form>
     </Card>
   );
@@ -251,8 +256,8 @@ function SignUpForm() {
           error={errors.confirmPassword?.message}
         />
 
-        <Button disabled={isSubmitting} type="submit">
-          {isSubmitting ? "Creating..." : "Create account"}
+        <Button type="submit" disabled={isSubmitting}>
+          {isSubmitting ? "Creating account..." : "Create account"}
         </Button>
       </form>
     </Card>

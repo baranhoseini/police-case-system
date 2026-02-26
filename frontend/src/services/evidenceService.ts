@@ -15,7 +15,7 @@ type AddVehicleEvidenceInput = {
   title: string;
   description?: string;
   plateNumber?: string;
-  vin?: string; // mapped to serial_number when plate is empty
+  vin?: string;
   model?: string;
   color?: string;
 };
@@ -27,7 +27,6 @@ type AddMedicalEvidenceInput = {
   description?: string;
   sampleType?: string;
   labNotes?: string;
-  imageUrl?: string; // required by backend validation
 };
 
 type AddMediaEvidenceInput = {
@@ -47,14 +46,14 @@ export type AddEvidenceInput =
 
 type BackendEvidence = {
   id: number;
-  evidence_type: "GENERIC" | "MEDICAL" | "VEHICLE" | "ID_DOC" | "WITNESS";
+  evidence_type: string;
   title: string;
   description: string;
   created_at: string;
 
   image_url: string;
-  image_urls: string[];
-  media_urls: string[];
+  image_urls: string;
+  media_urls: string;
 
   medical_result: string;
 
@@ -63,7 +62,7 @@ type BackendEvidence = {
   plate_number: string;
   serial_number: string;
 
-  id_fields: Record<string, string>;
+  id_fields: string;
   transcription: string;
 
   case: number;
@@ -71,161 +70,204 @@ type BackendEvidence = {
 };
 
 function normalizeCaseIdToNumber(raw: string): number {
-  const n = Number(raw.trim());
-  if (!Number.isFinite(n) || n <= 0) throw new Error("Invalid case id (must be a number)");
+  const trimmed = raw.trim();
+  const numeric = trimmed.replace(/^C-/i, "");
+  const n = Number(numeric);
+  if (!Number.isFinite(n)) throw new Error("Invalid case id");
   return n;
 }
 
-function toEvidenceStatus(): EvidenceStatus {
-  // Backend model doesn't have verification states; keep UI consistent.
-  return "PENDING";
+function splitUrls(v: string | null | undefined): string[] {
+  const s = (v ?? "").trim();
+  if (!s) return [];
+  try {
+    const parsed = JSON.parse(s);
+    if (Array.isArray(parsed)) return parsed.map(String).filter(Boolean);
+  } catch {
+    // ignore
+  }
+  return s
+    .split(/[\s,]+/g)
+    .map((x) => x.trim())
+    .filter(Boolean);
 }
 
-function mapFromBackend(b: BackendEvidence): Evidence {
-  const base = {
-    id: String(b.id),
-    caseId: String(b.case),
-    title: b.title,
-    description: b.description || undefined,
-    status: toEvidenceStatus(),
-    createdAt: b.created_at,
-    createdByUserId: b.created_by ? String(b.created_by) : undefined,
-  };
+function joinUrls(urls: string[]): string {
+  return urls.map((x) => x.trim()).filter(Boolean).join(",");
+}
 
-  if (b.evidence_type === "ID_DOC") {
-    return { ...base, kind: "IDENTITY", fields: b.id_fields || {} };
+function safeParseObject(v: string | null | undefined): Record<string, string> {
+  const s = (v ?? "").trim();
+  if (!s) return {};
+  try {
+    const parsed = JSON.parse(s);
+    if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+      const out: Record<string, string> = {};
+      for (const [k, val] of Object.entries(parsed as Record<string, unknown>)) {
+        out[String(k)] = typeof val === "string" ? val : JSON.stringify(val);
+      }
+      return out;
+    }
+  } catch {
+    // ignore
   }
+  return { id_fields: s };
+}
 
-  if (b.evidence_type === "VEHICLE") {
+function guessKind(x: BackendEvidence): Evidence["kind"] {
+  const t = (x.evidence_type ?? "").toUpperCase();
+
+  if (t.includes("VEHICLE") || x.plate_number || x.vehicle_model || x.vehicle_color || x.serial_number)
+    return "VEHICLE";
+
+  if (t.includes("MEDICAL") || x.medical_result) return "MEDICAL";
+
+  if (t.includes("ID") || t.includes("IDENTITY") || x.id_fields) return "IDENTITY";
+
+  if (t.includes("MEDIA") || x.image_url || x.image_urls || x.media_urls || x.transcription)
+    return "MEDIA";
+
+  return "IDENTITY";
+}
+
+function mapFromBackend(x: BackendEvidence): Evidence {
+  const kind = guessKind(x);
+
+  const base = {
+    id: String(x.id),
+    caseId: `C-${String(x.case)}`,
+    kind,
+    title: x.title,
+    description: x.description || undefined,
+    status: "PENDING" as EvidenceStatus,
+    createdAt: x.created_at,
+  } as const;
+
+  if (kind === "VEHICLE") {
     return {
       ...base,
       kind: "VEHICLE",
-      plateNumber: b.plate_number || undefined,
-      vin: b.serial_number || undefined,
-      model: b.vehicle_model || undefined,
-      color: b.vehicle_color || undefined,
+      plateNumber: x.plate_number || undefined,
+      vin: x.serial_number || undefined,
+      model: x.vehicle_model || undefined,
+      color: x.vehicle_color || undefined,
     };
   }
 
-  if (b.evidence_type === "MEDICAL") {
-    // sampleType/labNotes aren't modeled separately in backend; keep them in description.
-    return { ...base, kind: "MEDICAL" };
-  }
-
-  // WITNESS + GENERIC both map to MEDIA in UI
-  const url = (b.media_urls && b.media_urls[0]) || b.image_url || (b.image_urls && b.image_urls[0]) || "";
-  return { ...base, kind: "MEDIA", mediaType: "IMAGE", url };
-}
-
-function mapToBackend(input: AddEvidenceInput): Partial<BackendEvidence> & { case: number } {
-  const caseId = normalizeCaseIdToNumber(input.caseId);
-
-  if (input.kind === "IDENTITY") {
+  if (kind === "MEDICAL") {
     return {
-      case: caseId,
-      evidence_type: "ID_DOC",
-      title: input.title,
-      description: input.description || "",
-      id_fields: input.fields || {},
-      image_urls: [],
-      media_urls: [],
-    } as any;
+      ...base,
+      kind: "MEDICAL",
+      sampleType: x.transcription || undefined,
+      labNotes: x.medical_result || undefined,
+    };
   }
 
-  if (input.kind === "VEHICLE") {
-    const plate = (input.plateNumber || "").trim();
-    const serial = (input.vin || "").trim();
-
+  if (kind === "IDENTITY") {
     return {
-      case: caseId,
-      evidence_type: "VEHICLE",
-      title: input.title,
-      description: input.description || "",
-      plate_number: plate,
-      serial_number: plate ? "" : serial, // enforce backend validation rule
-      vehicle_model: input.model || "",
-      vehicle_color: input.color || "",
-      image_urls: [],
-      media_urls: [],
-      id_fields: {},
-    } as any;
+      ...base,
+      kind: "IDENTITY",
+      fields: safeParseObject(x.id_fields),
+    };
   }
 
-  if (input.kind === "MEDICAL") {
-    const img = (input.imageUrl || "").trim();
-    return {
-      case: caseId,
-      evidence_type: "MEDICAL",
-      title: input.title,
-      description:
-        [input.description, input.sampleType ? `Sample: ${input.sampleType}` : "", input.labNotes ? `Lab: ${input.labNotes}` : ""]
-          .filter(Boolean)
-          .join("\n"),
-      image_url: img,
-      image_urls: img ? [img] : [],
-      media_urls: [],
-      id_fields: {},
-    } as any;
-  }
+  const images = splitUrls(x.image_urls);
+  const media = splitUrls(x.media_urls);
+  const url = x.image_url || images[0] || media[0] || "";
 
-  // MEDIA
-  const url = input.url.trim();
-  if (input.mediaType === "IMAGE") {
-    return {
-      case: caseId,
-      evidence_type: "GENERIC",
-      title: input.title,
-      description: input.description || "",
-      image_url: url,
-      image_urls: url ? [url] : [],
-      media_urls: [],
-      id_fields: {},
-    } as any;
-  }
-
-  // audio/video -> witness to satisfy validation (transcription OR media_urls)
   return {
-    case: caseId,
-    evidence_type: "WITNESS",
-    title: input.title,
-    description: input.description || "",
-    transcription: "",
-    media_urls: url ? [url] : [],
-    image_urls: [],
-    id_fields: {},
-  } as any;
+    ...base,
+    kind: "MEDIA",
+    mediaType: (x.image_url || images.length > 0 ? "IMAGE" : "VIDEO") as "IMAGE" | "VIDEO" | "AUDIO",
+    url,
+  };
 }
 
-export async function listEvidence(opts: { caseId?: string }): Promise<Evidence[]> {
-  const params: any = {};
-  if (opts.caseId) params.case = normalizeCaseIdToNumber(opts.caseId);
-  const { data } = await apiClient.get<BackendEvidence[]>("/evidence/", { params });
-  return (data || []).map(mapFromBackend);
+export async function listEvidence(params?: { caseId?: string }): Promise<Evidence[]> {
+  const caseId = params?.caseId?.trim();
+  const caseParam = caseId ? normalizeCaseIdToNumber(caseId) : null;
+
+  const { data } = await apiClient.get<BackendEvidence[]>("/evidence/", {
+    params: caseParam ? { case: caseParam } : undefined,
+  });
+
+  return (data ?? []).map(mapFromBackend);
 }
 
 export async function addEvidence(input: AddEvidenceInput): Promise<Evidence> {
-  const body = mapToBackend(input);
+  const caseNum = normalizeCaseIdToNumber(input.caseId);
+
+  const body: Record<string, unknown> = {
+    case: caseNum,
+    title: input.title.trim(),
+    description: input.description?.trim() || "",
+    evidence_type: "GENERIC",
+    image_url: "",
+    image_urls: "",
+    medical_result: "",
+    vehicle_model: "",
+    vehicle_color: "",
+    plate_number: "",
+    serial_number: "",
+    id_fields: "",
+    transcription: "",
+    media_urls: "",
+  };
+
+  if (input.kind === "IDENTITY") {
+    body.id_fields = JSON.stringify(input.fields);
+    body.evidence_type = "IDENTITY";
+  }
+
+  if (input.kind === "VEHICLE") {
+    body.evidence_type = "VEHICLE";
+    body.plate_number = input.plateNumber?.trim() || "";
+    body.serial_number = input.vin?.trim() || "";
+    body.vehicle_model = input.model?.trim() || "";
+    body.vehicle_color = input.color?.trim() || "";
+  }
+
+  if (input.kind === "MEDICAL") {
+    body.evidence_type = "MEDICAL";
+    body.medical_result = input.labNotes?.trim() || "";
+    body.transcription = input.sampleType?.trim() || "";
+  }
+
+  if (input.kind === "MEDIA") {
+    body.evidence_type = "MEDIA";
+    if (input.mediaType === "IMAGE") {
+      body.image_url = input.url.trim();
+      body.image_urls = joinUrls([input.url.trim()]);
+    } else {
+      body.media_urls = joinUrls([input.url.trim()]);
+    }
+  }
+
   const { data } = await apiClient.post<BackendEvidence>("/evidence/", body);
   return mapFromBackend(data);
 }
 
-/**
- * UI-only status changes - backend doesn't track PENDING/VERIFIED/REJECTED yet.
- * Keeping this for UI completeness; no-op on backend.
- */
-export async function setEvidenceStatus(_id: string, _status: EvidenceStatus): Promise<void> {
-  return;
+export async function setEvidenceStatus(id: string, status: EvidenceStatus): Promise<void> {
+  void id;
+  void status;
+  throw new Error("Evidence status update is not supported by the backend yet.");
 }
 
 export function formatEvidenceKind(kind: Evidence["kind"]): string {
-  if (kind === "IDENTITY") return "Identity";
-  if (kind === "VEHICLE") return "Vehicle";
-  if (kind === "MEDICAL") return "Medical/Biological";
-  return "Media/Other";
+  const map: Record<Evidence["kind"], string> = {
+    IDENTITY: "Identity",
+    VEHICLE: "Vehicle",
+    MEDICAL: "Medical",
+    MEDIA: "Media",
+  };
+  return map[kind];
 }
 
-export function formatEvidenceStatus(status: EvidenceStatus): string {
-  if (status === "VERIFIED") return "Verified";
-  if (status === "REJECTED") return "Rejected";
-  return "Pending";
+export function formatEvidenceStatus(s: EvidenceStatus): string {
+  const map: Record<EvidenceStatus, string> = {
+    PENDING: "Pending",
+    VERIFIED: "Verified",
+    REJECTED: "Rejected",
+  };
+  return map[s];
 }
