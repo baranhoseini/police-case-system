@@ -1,5 +1,3 @@
-version: "3.9"
-
 services:
   db:
     image: postgres:15
@@ -35,6 +33,7 @@ services:
       - "5174:5174"
     depends_on:
       - backend
+    command: sh -lc "npm install && npm run dev -- --host 0.0.0.0 --port 5174"
 
 volumes:
   postgres_data:

@@ -13,7 +13,8 @@
     "format:write": "prettier . --write",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:integration": "cd .. && docker compose up -d --build && cd frontend && bash scripts/create_test_user.sh && VITE_API_BASE_URL=http://localhost:8000/api vitest run --config vitest.integration.config.ts"
+    "test:integration": "cd .. && docker compose up -d --build && cd frontend && bash scripts/create_test_user.sh && VITE_API_BASE_URL=http://localhost:8000/api vitest run --config vitest.integration.config.ts",
+    "test:e2e": "playwright test"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",

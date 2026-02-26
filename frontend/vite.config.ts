@@ -11,5 +11,11 @@ export default defineConfig({
     environment: "jsdom",
     setupFiles: "./src/setupTests.ts",
     globals: true,
+
+    // ✅ Only run YOUR tests
+    include: ["src/__tests__/**/*.test.{ts,tsx}", "src/__integration__/**/*.test.{ts,tsx}"],
+
+    // ✅ Never run dependency or Playwright tests with Vitest
+    exclude: ["**/node_modules/**", "tests/**"],
   },
 });
