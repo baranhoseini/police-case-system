@@ -7,9 +7,50 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth import get_user_model
 from rest_framework import serializers
 from rbac.models import Role, UserRole
+from rbac.permissions import canonicalize_role_name
+
 
 
 User = get_user_model()
+
+class UserPublicWithRolesSerializer(serializers.ModelSerializer):
+    roles = serializers.SerializerMethodField()
+    primary_role = serializers.SerializerMethodField()
+
+    class Meta:
+        model = User
+        fields = (
+            "id", "username", "first_name", "last_name",
+            "email", "phone", "national_id",
+            "roles", "primary_role",
+        )
+
+    def get_roles(self, obj):
+        raw = list(
+            UserRole.objects.filter(user=obj)
+            .select_related("role")
+            .values_list("role__name", flat=True)
+        )
+        # Return document-canonical role names (stable for frontend)
+        canon = [canonicalize_role_name(r) for r in raw]
+        # de-duplicate preserving order
+        out = []
+        seen = set()
+        for r in canon:
+            if r not in seen:
+                seen.add(r)
+                out.append(r)
+        return out
+
+    def get_primary_role(self, obj):
+        roles = self.get_roles(obj)
+        priority = ["Administrator","Chief","Captain","Sergent","Detective","Police Officer","Patrol Officer","Cadet","Judge","Corenary","Base user","Complainant","Witness","Suspect","Criminal"]
+        for r in priority:
+            if r in roles:
+                return r
+        return roles[0] if roles else None
+
+
 
 
 
@@ -55,7 +96,7 @@ class RegisterSerializer(serializers.ModelSerializer):
 
         # default role (base user / citizen)
         citizen_role, _ = Role.objects.get_or_create(
-            name="Citizen", defaults={"description": "Default role for newly registered users"}
+            name="Base user", defaults={"description": "Default role for newly registered users (Base user)"}
         )
         UserRole.objects.get_or_create(user=user, role=citizen_role)
 
@@ -84,5 +125,5 @@ class LoginSerializer(serializers.Serializer):
         return {
             "access": str(refresh.access_token),
             "refresh": str(refresh),
-            "user": UserPublicSerializer(user).data,
+            "user": UserPublicWithRolesSerializer(user).data,
         }

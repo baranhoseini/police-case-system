@@ -8,8 +8,12 @@ type RetryConfig = AxiosRequestConfig & {
 };
 
 
+// IMPORTANT:
+// This code runs in the browser (even when Vite is inside Docker).
+// The backend is exposed on the host as http://localhost:8001 (see docker-compose.yml).
+// So the default base URL must target localhost:8001, NOT 127.0.0.1:8000.
 const baseURL =
-  import.meta.env.VITE_API_BASE_URL?.toString() || "http://127.0.0.1:8000/api";
+  import.meta.env.VITE_API_BASE_URL?.toString() || "http://localhost:8001/api";
 
 export const apiClient = axios.create({
   baseURL,
@@ -23,10 +27,12 @@ async function refreshAccessToken(): Promise<string> {
   if (!refresh) throw new Error("No refresh token");
 
   const { data } = await axios.post<RefreshResponse>(
-    "http://127.0.0.1:8000/api/token/refresh/",
+    `${baseURL}/token/refresh/`,
     { refresh },
     { headers: { "Content-Type": "application/json" } },
   );
+
+
 
   if (!data?.access) throw new Error("No access token in refresh response");
 

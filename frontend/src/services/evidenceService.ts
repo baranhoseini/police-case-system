@@ -27,6 +27,7 @@ type AddMedicalEvidenceInput = {
   description?: string;
   sampleType?: string;
   labNotes?: string;
+  imageUrl: string;
 };
 
 type AddMediaEvidenceInput = {
@@ -52,8 +53,8 @@ type BackendEvidence = {
   created_at: string;
 
   image_url: string;
-  image_urls: string;
-  media_urls: string;
+  image_urls: string[] | string;
+  media_urls: string[] | string;
 
   medical_result: string;
 
@@ -62,7 +63,7 @@ type BackendEvidence = {
   plate_number: string;
   serial_number: string;
 
-  id_fields: string;
+  id_fields: Record<string, string> | string;
   transcription: string;
 
   case: number;
@@ -77,12 +78,13 @@ function normalizeCaseIdToNumber(raw: string): number {
   return n;
 }
 
-function splitUrls(v: string | null | undefined): string[] {
-  const s = (v ?? "").trim();
+function splitUrls(v: unknown): string[] {
+  if (Array.isArray(v)) return v.map(String).map((x) => x.trim()).filter(Boolean);
+  const s = typeof v === "string" ? v.trim() : "";
   if (!s) return [];
   try {
     const parsed = JSON.parse(s);
-    if (Array.isArray(parsed)) return parsed.map(String).filter(Boolean);
+    if (Array.isArray(parsed)) return parsed.map(String).map((x) => x.trim()).filter(Boolean);
   } catch {
     // ignore
   }
@@ -92,12 +94,16 @@ function splitUrls(v: string | null | undefined): string[] {
     .filter(Boolean);
 }
 
-function joinUrls(urls: string[]): string {
-  return urls.map((x) => x.trim()).filter(Boolean).join(",");
-}
+function safeParseObject(v: unknown): Record<string, string> {
+  if (v && typeof v === "object" && !Array.isArray(v)) {
+    const out: Record<string, string> = {};
+    for (const [k, val] of Object.entries(v as Record<string, unknown>)) {
+      out[String(k)] = typeof val === "string" ? val : JSON.stringify(val);
+    }
+    return out;
+  }
 
-function safeParseObject(v: string | null | undefined): Record<string, string> {
-  const s = (v ?? "").trim();
+  const s = typeof v === "string" ? v.trim() : "";
   if (!s) return {};
   try {
     const parsed = JSON.parse(s);
@@ -111,7 +117,7 @@ function safeParseObject(v: string | null | undefined): Record<string, string> {
   } catch {
     // ignore
   }
-  return { id_fields: s };
+  return {};
 }
 
 function guessKind(x: BackendEvidence): Evidence["kind"] {
@@ -187,11 +193,17 @@ export async function listEvidence(params?: { caseId?: string }): Promise<Eviden
   const caseId = params?.caseId?.trim();
   const caseParam = caseId ? normalizeCaseIdToNumber(caseId) : null;
 
-  const { data } = await apiClient.get<BackendEvidence[]>("/evidence/", {
+  const { data } = await apiClient.get<any>("/evidence/", {
     params: caseParam ? { case: caseParam } : undefined,
   });
 
-  return (data ?? []).map(mapFromBackend);
+  const rows: BackendEvidence[] = Array.isArray(data)
+    ? data
+    : Array.isArray((data as any)?.results)
+      ? (data as any).results
+      : [];
+
+  return rows.map(mapFromBackend);
 }
 
 export async function addEvidence(input: AddEvidenceInput): Promise<Evidence> {
@@ -203,26 +215,28 @@ export async function addEvidence(input: AddEvidenceInput): Promise<Evidence> {
     description: input.description?.trim() || "",
     evidence_type: "GENERIC",
     image_url: "",
-    image_urls: "",
+    image_urls: [],
     medical_result: "",
     vehicle_model: "",
     vehicle_color: "",
     plate_number: "",
     serial_number: "",
-    id_fields: "",
+    id_fields: {},
     transcription: "",
-    media_urls: "",
+    media_urls: [],
   };
 
   if (input.kind === "IDENTITY") {
-    body.id_fields = JSON.stringify(input.fields);
-    body.evidence_type = "IDENTITY";
+    body.id_fields = input.fields;
+    body.evidence_type = "ID_DOC";
   }
 
   if (input.kind === "VEHICLE") {
     body.evidence_type = "VEHICLE";
-    body.plate_number = input.plateNumber?.trim() || "";
-    body.serial_number = input.vin?.trim() || "";
+    const plate = input.plateNumber?.trim() || "";
+    const vin = input.vin?.trim() || "";
+    body.plate_number = plate;
+    body.serial_number = plate ? "" : vin; // XOR: if plate exists, serial must be empty
     body.vehicle_model = input.model?.trim() || "";
     body.vehicle_color = input.color?.trim() || "";
   }
@@ -231,15 +245,20 @@ export async function addEvidence(input: AddEvidenceInput): Promise<Evidence> {
     body.evidence_type = "MEDICAL";
     body.medical_result = input.labNotes?.trim() || "";
     body.transcription = input.sampleType?.trim() || "";
+    const img = input.imageUrl?.trim() || "";
+    body.image_url = img;
+    body.image_urls = img ? [img] : [];
   }
 
   if (input.kind === "MEDIA") {
-    body.evidence_type = "MEDIA";
     if (input.mediaType === "IMAGE") {
+      body.evidence_type = "GENERIC";
       body.image_url = input.url.trim();
-      body.image_urls = joinUrls([input.url.trim()]);
+      body.image_urls = [input.url.trim()];
     } else {
-      body.media_urls = joinUrls([input.url.trim()]);
+      body.evidence_type = "WITNESS";
+      body.media_urls = [input.url.trim()];
+      body.transcription = ""; // OK: witness passes as long as media_urls has at least one
     }
   }
 

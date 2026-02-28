@@ -1,8 +1,30 @@
 from django.contrib.auth import get_user_model
 from rest_framework import serializers
 from rbac.models import Role, UserRole
+from rbac.permissions import canonicalize_role_name, expand_role_names
+
 
 User = get_user_model()
+
+def _resolve_role_by_name(name: str) -> Role:
+    # 1) exact
+    role = Role.objects.filter(name=name).first()
+    if role:
+        return role
+
+    # 2) canonical (document name)
+    canonical = canonicalize_role_name(name)
+    role = Role.objects.filter(name=canonical).first()
+    if role:
+        return role
+
+    # 3) try any alias spellings for this canonical role
+    for candidate in expand_role_names(name):
+        role = Role.objects.filter(name=candidate).first()
+        if role:
+            return role
+
+    raise Role.DoesNotExist
 
 class RoleSerializer(serializers.ModelSerializer):
     class Meta:
@@ -23,7 +45,7 @@ class AssignRoleSerializer(serializers.Serializer):
             raise serializers.ValidationError({"user_id": "User not found"})
 
         try:
-            role = Role.objects.get(name=role_name)
+            role = _resolve_role_by_name(role_name)
         except Role.DoesNotExist:
             raise serializers.ValidationError({"role_name": "Role not found"})
 
@@ -56,7 +78,7 @@ class RevokeRoleSerializer(serializers.Serializer):
             raise serializers.ValidationError({"user_id": "User not found"})
 
         try:
-            role = Role.objects.get(name=attrs["role_name"])
+            role = _resolve_role_by_name(attrs["role_name"])
         except Role.DoesNotExist:
             raise serializers.ValidationError({"role_name": "Role not found"})
 

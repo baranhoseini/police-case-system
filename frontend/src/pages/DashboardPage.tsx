@@ -1,3 +1,4 @@
+// frontend/src/pages/DashboardPage.tsx
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 
@@ -9,58 +10,34 @@ import { canAccessModule } from "../features/auth/permissions";
 import { MODULES } from "../features/modules/moduleRegistry";
 
 export default function DashboardPage() {
-  const { role, setRole } = useAuth();
+  const { primaryRole, roles } = useAuth();
   const [q, setQ] = useState("");
 
   const visibleModules = useMemo(() => {
-    if (!role) return [];
-    const allowed = MODULES.filter((m) => canAccessModule(role, m.key));
+    const allowed = MODULES.filter((m) => {
+      if (canAccessModule(primaryRole, m.key)) return true;
+      return (roles ?? []).some((r) => canAccessModule(r, m.key));
+    });
     const query = q.trim().toLowerCase();
     if (!query) return allowed;
 
     return allowed.filter(
       (m) => m.title.toLowerCase().includes(query) || m.description.toLowerCase().includes(query),
     );
-  }, [role, q]);
+  }, [primaryRole, q]);
 
   return (
     <MainLayout title="Dashboard">
       <div style={{ display: "grid", gap: 14 }}>
         <Card title="Your access">
           <p style={{ marginTop: 0, color: "var(--muted)" }}>
-            Current role: <strong>{role ?? "Unknown"}</strong>
+            Current role: <strong>{primaryRole ?? "Citizen"}</strong>
           </p>
 
-          {/* فقط برای تست، بعداً حذف می‌شود */}
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
-            {(
-              [
-                "CITIZEN",
-                "POLICE_OFFICER",
-                "DETECTIVE",
-                "CAPTAIN",
-                "JUDGE",
-                "CHIEF",
-                "ADMIN",
-              ] as const
-            ).map((r) => (
-              <button
-                key={r}
-                type="button"
-                onClick={() => setRole(r)}
-                style={{
-                  border: "1px solid var(--border)",
-                  padding: "8px 10px",
-                  borderRadius: 10,
-                  cursor: "pointer",
-                  background: "white",
-                  fontWeight: 700,
-                }}
-              >
-                {r}
-              </button>
-            ))}
-          </div>
+          {/* Removed fake role switcher (it broke FE/BE sync). */}
+          <p style={{ margin: 0, fontSize: 13, color: "var(--muted)" }}>
+            Role is loaded from backend (login / auth me).
+          </p>
         </Card>
 
         <Card title="Modules">
@@ -72,7 +49,7 @@ export default function DashboardPage() {
               onChange={(e) => setQ(e.target.value)}
             />
 
-            {role && visibleModules.length === 0 ? (
+            {visibleModules.length === 0 ? (
               <p style={{ margin: 0, color: "var(--muted)" }}>No modules match your search.</p>
             ) : null}
 
@@ -83,14 +60,23 @@ export default function DashboardPage() {
                 gap: 14,
               }}
             >
-              {visibleModules.map((m) => (
-                <Card key={m.key} title={m.title}>
-                  <p style={{ marginTop: 0, color: "var(--muted)" }}>{m.description}</p>
-                  <Link to={m.to} style={{ fontWeight: 800 }}>
-                    Open →
-                  </Link>
-                </Card>
-              ))}
+              {visibleModules.map((m) => {
+                const isExternal = /^https?:\/\//i.test(m.to);
+                return (
+                  <Card key={m.key} title={m.title}>
+                    <p style={{ marginTop: 0, color: "var(--muted)" }}>{m.description}</p>
+                    {isExternal ? (
+                      <a href={m.to} target="_blank" rel="noreferrer" style={{ fontWeight: 800 }}>
+                        Open →
+                      </a>
+                    ) : (
+                      <Link to={m.to} style={{ fontWeight: 800 }}>
+                        Open →
+                      </Link>
+                    )}
+                  </Card>
+                );
+              })}
             </div>
           </div>
         </Card>

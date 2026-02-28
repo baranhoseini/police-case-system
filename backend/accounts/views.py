@@ -4,6 +4,10 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from drf_spectacular.utils import extend_schema, OpenApiResponse
 
+from .serializers import UserPublicWithRolesSerializer
+
+
+
 from .serializers import RegisterSerializer, LoginSerializer, UserPublicSerializer
 
 
@@ -40,4 +44,4 @@ class MeView(APIView):
         responses={200: UserPublicSerializer},
     )
     def get(self, request):
-        return Response(UserPublicSerializer(request.user).data, status=status.HTTP_200_OK)
+       return Response(UserPublicWithRolesSerializer(request.user).data)

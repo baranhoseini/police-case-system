@@ -24,10 +24,14 @@ type BackendComplaint = {
   created_at?: string;
   updated_at?: string;
   description?: string;
+  payload?: Record<string, unknown>;
 } & Record<string, unknown>;
 
 function mapComplaint(x: BackendComplaint): ComplaintItem {
-  const title = typeof x.title === "string" && x.title.trim() ? x.title : `Complaint #${x.id}`;
+  const payloadTitle = typeof x.payload?.title === "string" ? x.payload.title : "";
+  const title =
+    (typeof x.title === "string" && x.title.trim() ? x.title : "") ||
+    (payloadTitle.trim() ? payloadTitle : `Complaint #${x.id}`);
   const status = typeof x.status === "string" ? x.status : "SUBMITTED";
   const createdAt = typeof x.created_at === "string" ? x.created_at : new Date().toISOString();
   const updatedAt = typeof x.updated_at === "string" ? x.updated_at : undefined;

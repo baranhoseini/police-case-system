@@ -1,29 +1,32 @@
 import { apiClient } from "./apiClient";
+import type { User } from "../types/user";
 
 export type LoginPayload = {
-  email: string;
+  email: string; // actually "identifier" (username/email/phone/national id)
   password: string;
 };
 
 export type LoginResponse = {
   access: string;
   refresh: string;
-  user: unknown;
+  user: User; // must include roles + primary_role from backend
 };
 
 export type RegisterPayload = {
-  fullName: string;
+  username: string;
+  firstName: string;
+  lastName: string;
   email: string;
   phone: string;
   nationalId: string;
   password: string;
 };
 
-
 export type RegisterResponse = {
-  access?: string;
-  refresh?: string;
-  user?: unknown;
+  // your backend register likely returns the created user (or a message).
+  // keep it flexible to avoid breaking if backend doesn't return tokens here.
+  user?: User;
+  detail?: string;
 };
 
 export async function login(payload: LoginPayload): Promise<LoginResponse> {
@@ -36,16 +39,7 @@ export async function login(payload: LoginPayload): Promise<LoginResponse> {
   return data;
 }
 
-
-export async function register(payload: {
-  username: string;
-  firstName: string;
-  lastName: string;
-  email: string;
-  phone: string;
-  nationalId: string;
-  password: string;
-}) {
+export async function register(payload: RegisterPayload): Promise<RegisterResponse> {
   const body = {
     username: payload.username.trim(),
     first_name: payload.firstName.trim(),
@@ -56,6 +50,6 @@ export async function register(payload: {
     password: payload.password,
   };
 
-  const { data } = await apiClient.post("/auth/register/", body);
+  const { data } = await apiClient.post<RegisterResponse>("/auth/register/", body);
   return data;
 }

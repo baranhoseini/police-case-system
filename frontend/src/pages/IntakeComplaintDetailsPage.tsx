@@ -55,8 +55,9 @@ export default function IntakeComplaintDetailsPage() {
     try {
       const d = await getComplaint(complaintId);
       setData(d);
-      setTitle(pickString(d as Record<string, unknown>, "title"));
-      setDescription(pickString(d as Record<string, unknown>, "description"));
+      const payload = ((d as Record<string, unknown>)?.payload as Record<string, unknown>) ?? {};
+      setTitle(pickString(payload, "title"));
+      setDescription(pickString(payload, "description"));
     } catch (e) {
       setError(getApiErrorMessage(e));
       setData(null);
@@ -78,8 +79,10 @@ export default function IntakeComplaintDetailsPage() {
     try {
       if (isNew) {
         const created = await createComplaint({
-          title: title.trim(),
-          description: description.trim(),
+          payload: {
+            title: title.trim(),
+            description: description.trim(),
+          },
         });
 
         const newId = (created as BackendComplaint).id;
@@ -90,8 +93,10 @@ export default function IntakeComplaintDetailsPage() {
         }
       } else if (complaintId) {
         const updated = await patchComplaint(complaintId, {
-          title: title.trim(),
-          description: description.trim(),
+          payload: {
+            title: title.trim(),
+            description: description.trim(),
+          },
         });
         setData(updated);
       }

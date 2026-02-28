@@ -1,13 +1,23 @@
+// frontend/src/features/auth/AuthContextBase.ts
 import { createContext } from "react";
-import type { RoleKey } from "../../types/user";
+import type { User, RoleKey } from "../../types/user";
 
 export type AuthState = {
   token: string | null;
-  role: RoleKey | null;
+
+  // Backend-driven user info (source of truth)
+  user: User | null;
+  roles: RoleKey[];
+  primaryRole: RoleKey | null;
+
   isAuthenticated: boolean;
-  signIn: (token: string, role?: RoleKey) => void;
+
+  // Updated signature: login returns token + user
+  signIn: (token: string, user: User) => void;
   signOut: () => void;
-  setRole: (role: RoleKey) => void;
+
+  // Helper to update after calling /auth/me (optional but useful)
+  setUser: (user: User | null) => void;
 };
 
 export const AuthContext = createContext<AuthState | null>(null);

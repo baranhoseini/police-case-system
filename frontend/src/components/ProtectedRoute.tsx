@@ -8,15 +8,20 @@ type Props = PropsWithChildren<{
 }>;
 
 export default function ProtectedRoute({ allowedRoles, children }: Props) {
-  const { isAuthenticated, role } = useAuth();
+  const { isAuthenticated, primaryRole, roles } = useAuth();
   const location = useLocation();
 
   if (!isAuthenticated) {
     return <Navigate to="/auth" replace state={{ from: location.pathname }} />;
   }
 
-  if (allowedRoles && role && !allowedRoles.includes(role)) {
-    return <Navigate to="/dashboard" replace />;
+  if (allowedRoles && allowedRoles.length > 0) {
+    // Prefer primaryRole, but support multi-role users.
+    const hasAllowed =
+      (primaryRole ? allowedRoles.includes(primaryRole) : false) ||
+      roles.some((r) => allowedRoles.includes(r));
+
+    if (!hasAllowed) return <Navigate to="/dashboard" replace />;
   }
 
   return children;
