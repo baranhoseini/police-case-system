@@ -78,13 +78,39 @@ export async function deleteComplaint(id: number): Promise<void> {
   await apiClient.delete(`/intake/complaints/${id}/`);
 }
 
-export async function cadetReview(id: number, body: Record<string, unknown> = {}): Promise<BackendComplaint> {
-  const { data } = await apiClient.post<BackendComplaint>(`/intake/complaints/${id}/cadet_review/`, body);
+
+function normalizeReviewBody(body: Record<string, unknown> | null | undefined, opts?: { reject?: boolean; errorMessage?: string }) {
+  // Backend expects: {status: "approve"} or {status: "reject", error_message?: "..."}
+  if (opts?.reject) {
+    return { status: "reject", error_message: (opts.errorMessage ?? "") };
+  }
+  const b = body ?? {};
+  const status = typeof b.status === "string" ? b.status : "";
+  if (status === "approve" || status === "reject") return b;
+  return { status: "approve" };
+}
+
+export async function cadetReview(id: number, body?: Record<string, unknown>): Promise<BackendComplaint> {
+  const payload = normalizeReviewBody(body);
+  const { data } = await apiClient.post<BackendComplaint>(`/intake/complaints/${id}/cadet_review/`, payload);
   return data;
 }
 
-export async function officerReview(id: number, body: Record<string, unknown> = {}): Promise<BackendComplaint> {
-  const { data } = await apiClient.post<BackendComplaint>(`/intake/complaints/${id}/officer_review/`, body);
+export async function cadetReject(id: number, errorMessage: string): Promise<BackendComplaint> {
+  const payload = normalizeReviewBody(null, { reject: true, errorMessage });
+  const { data } = await apiClient.post<BackendComplaint>(`/intake/complaints/${id}/cadet_review/`, payload);
+  return data;
+}
+
+export async function officerReview(id: number, body?: Record<string, unknown>): Promise<BackendComplaint> {
+  const payload = normalizeReviewBody(body);
+  const { data } = await apiClient.post<BackendComplaint>(`/intake/complaints/${id}/officer_review/`, payload);
+  return data;
+}
+
+export async function officerReject(id: number, errorMessage: string): Promise<BackendComplaint> {
+  const payload = normalizeReviewBody(null, { reject: true, errorMessage });
+  const { data } = await apiClient.post<BackendComplaint>(`/intake/complaints/${id}/officer_review/`, payload);
   return data;
 }
 

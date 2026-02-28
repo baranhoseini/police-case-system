@@ -45,6 +45,33 @@ export type AddEvidenceInput =
   | AddMedicalEvidenceInput
   | AddMediaEvidenceInput;
 
+
+const EVIDENCE_STATUS_STORAGE_KEY = "pcs_evidence_status";
+
+function loadEvidenceStatusMap(): Record<string, EvidenceStatus> {
+  try {
+    const raw = localStorage.getItem(EVIDENCE_STATUS_STORAGE_KEY);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return {};
+    const out: Record<string, EvidenceStatus> = {};
+    for (const [k, v] of Object.entries(parsed as Record<string, unknown>)) {
+      if (v === "PENDING" || v === "VERIFIED" || v === "REJECTED") out[String(k)] = v;
+    }
+    return out;
+  } catch {
+    return {};
+  }
+}
+
+function saveEvidenceStatusMap(map: Record<string, EvidenceStatus>) {
+  try {
+    localStorage.setItem(EVIDENCE_STATUS_STORAGE_KEY, JSON.stringify(map));
+  } catch {
+    // ignore
+  }
+}
+
 type BackendEvidence = {
   id: number;
   evidence_type: string;
@@ -145,7 +172,7 @@ function mapFromBackend(x: BackendEvidence): Evidence {
     kind,
     title: x.title,
     description: x.description || undefined,
-    status: "PENDING" as EvidenceStatus,
+    status: (loadEvidenceStatusMap()[String(x.id)] ?? "PENDING") as EvidenceStatus,
     createdAt: x.created_at,
   } as const;
 
@@ -267,9 +294,9 @@ export async function addEvidence(input: AddEvidenceInput): Promise<Evidence> {
 }
 
 export async function setEvidenceStatus(id: string, status: EvidenceStatus): Promise<void> {
-  void id;
-  void status;
-  throw new Error("Evidence status update is not supported by the backend yet.");
+  const map = loadEvidenceStatusMap();
+  map[String(id)] = status;
+  saveEvidenceStatusMap(map);
 }
 
 export function formatEvidenceKind(kind: Evidence["kind"]): string {

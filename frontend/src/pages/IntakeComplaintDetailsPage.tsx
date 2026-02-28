@@ -9,10 +9,12 @@ import Button from "../components/Button";
 import { getApiErrorMessage } from "../services/apiErrors";
 import {
   cadetReview,
+  cadetReject,
   createComplaint,
   deleteComplaint,
   getComplaint,
   officerReview,
+  officerReject,
   patchComplaint,
   resubmitComplaint,
 } from "../services/intakeComplaintsService";
@@ -205,10 +207,37 @@ export default function IntakeComplaintDetailsPage() {
 
               <Button
                 variant="secondary"
+                onClick={() =>
+                  void doAction(() => {
+                    const msg = prompt("Cadet reject reason (optional):") ?? "";
+                    return cadetReject(complaintId, msg);
+                  })
+                }
+                disabled={saving}
+              >
+                Cadet reject
+              </Button>
+
+              <Button
+                variant="secondary"
                 onClick={() => void doAction(() => officerReview(complaintId))}
                 disabled={saving}
               >
                 Officer review
+              </Button>
+
+              <Button
+                variant="secondary"
+                onClick={() =>
+                  void doAction(() => {
+        
+                    const msg = prompt("Officer reject reason (optional):") ?? "";
+                    return officerReject(complaintId, msg);
+                  })
+                }
+                disabled={saving}
+              >
+                Officer reject
               </Button>
 
               <Button
