@@ -2,8 +2,6 @@
 
 Web Programming course project.
 
-This README is optimized for **presentation day (Docker-first)**: every command + link you need is here so you don’t have to open ChatGPT.
-
 ---
 
 ## Tech Stack
