@@ -14,6 +14,7 @@ import CasesPage from "./CasesPage";
 import CaseDetailsPage from "./CaseDetailsPage";
 import IntakeComplaintsPage from "./IntakeComplaintsPage";
 import IntakeComplaintDetailsPage from "./IntakeComplaintDetailsPage";
+import PaymentReturnPage from "./PaymentReturnPage";
 
 export default function AppRoutes() {
   return (
@@ -109,6 +110,8 @@ export default function AppRoutes() {
           </ProtectedRoute>
         }
       />
+
+      <Route path="/payment/return" element={<PaymentReturnPage />} />
 
       <Route path="*" element={<NotFoundPage />} />
     </Routes>

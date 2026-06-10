@@ -188,7 +188,13 @@ class ComplaintViewSet(ModelViewSet):
                     user=complaint.created_by,
                     defaults={"status": CaseComplainant.STATUS_APPROVED},
                 )
-                CaseNotification.objects.create(case=case, message="Case formed from complaint")
+                # CaseNotification requires a recipient; use the complaint creator so the notification
+                # is always valid and the officer-approve flow does not crash with a 500.
+                CaseNotification.objects.create(
+                    case=case,
+                    recipient=complaint.created_by,
+                    message="Case formed from complaint",
+                )
                 complaint.case = case
                 complaint.status = ComplaintStatus.OFFICER_APPROVED
                 complaint.officer_error_message = ""

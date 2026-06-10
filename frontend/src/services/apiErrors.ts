@@ -11,6 +11,9 @@ function pickString(v: unknown, key: string): string | null {
 }
 
 export function getApiErrorMessage(err: unknown): string {
+  if (err instanceof Error && typeof err.message === "string" && err.message.trim()) {
+    return err.message;
+  }
   if (axios.isAxiosError(err)) {
     const status = err.response?.status;
     const data: unknown = err.response?.data;

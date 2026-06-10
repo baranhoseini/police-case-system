@@ -6,13 +6,17 @@ import Card from "../components/Card";
 import Input from "../components/Input";
 import Button from "../components/Button";
 
+import { useAuth } from "../features/auth/useAuth";
+
 import { getApiErrorMessage } from "../services/apiErrors";
 import {
   cadetReview,
+  cadetReject,
   createComplaint,
   deleteComplaint,
   getComplaint,
   officerReview,
+  officerReject,
   patchComplaint,
   resubmitComplaint,
 } from "../services/intakeComplaintsService";
@@ -31,6 +35,7 @@ function pickString(obj: Record<string, unknown>, key: string): string {
 export default function IntakeComplaintDetailsPage() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const auth = useAuth();
 
   const isNew = id === "new" || !id;
 
@@ -48,6 +53,20 @@ export default function IntakeComplaintDetailsPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Role/ownership gating for workflow actions.
+  const roles = auth.roles ?? [];
+  const isAdminish = roles.includes("Admin") || roles.includes("Administrator");
+  const isCadet = roles.includes("Cadet") || isAdminish;
+  const isOfficer =
+    roles.includes("Officer") ||
+    roles.includes("Police Officer") ||
+    roles.includes("Patrol Officer") ||
+    isAdminish;
+
+  const createdBy = (data?.created_by as unknown) ?? null;
+  const currentUserId = auth.user?.id ?? null;
+  const isOwner = !!currentUserId && String(createdBy) === String(currentUserId);
+
   const load = async () => {
     if (!complaintId) return;
     setLoading(true);
@@ -55,8 +74,9 @@ export default function IntakeComplaintDetailsPage() {
     try {
       const d = await getComplaint(complaintId);
       setData(d);
-      setTitle(pickString(d as Record<string, unknown>, "title"));
-      setDescription(pickString(d as Record<string, unknown>, "description"));
+      const payload = ((d as Record<string, unknown>)?.payload as Record<string, unknown>) ?? {};
+      setTitle(pickString(payload, "title"));
+      setDescription(pickString(payload, "description"));
     } catch (e) {
       setError(getApiErrorMessage(e));
       setData(null);
@@ -78,8 +98,10 @@ export default function IntakeComplaintDetailsPage() {
     try {
       if (isNew) {
         const created = await createComplaint({
-          title: title.trim(),
-          description: description.trim(),
+          payload: {
+            title: title.trim(),
+            description: description.trim(),
+          },
         });
 
         const newId = (created as BackendComplaint).id;
@@ -90,8 +112,10 @@ export default function IntakeComplaintDetailsPage() {
         }
       } else if (complaintId) {
         const updated = await patchComplaint(complaintId, {
-          title: title.trim(),
-          description: description.trim(),
+          payload: {
+            title: title.trim(),
+            description: description.trim(),
+          },
         });
         setData(updated);
       }
@@ -190,29 +214,82 @@ export default function IntakeComplaintDetailsPage() {
         {!isNew && complaintId ? (
           <Card title="Workflow">
             <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-              <Button
-                variant="secondary"
-                onClick={() => void doAction(() => cadetReview(complaintId))}
-                disabled={saving}
-              >
-                Cadet review
-              </Button>
+              {isCadet ? (
+                <>
+                  <Button
+                    variant="secondary"
+                    onClick={() => void doAction(() => cadetReview(complaintId))}
+                    disabled={saving}
+                  >
+                    Cadet review
+                  </Button>
 
-              <Button
-                variant="secondary"
-                onClick={() => void doAction(() => officerReview(complaintId))}
-                disabled={saving}
-              >
-                Officer review
-              </Button>
+                  <Button
+                    variant="secondary"
+                    onClick={() =>
+                      void doAction(() => {
+                        const msg = (prompt("Cadet request-changes reason (required):") ?? "").trim();
+                        if (!msg) throw new Error("Cadet reason is required.");
+                        return cadetReject(complaintId, msg);
+                      })
+                    }
+                    disabled={saving}
+                  >
+                    Cadet request changes
+                  </Button>
+                </>
+              ) : null}
 
-              <Button
-                variant="secondary"
-                onClick={() => void doAction(() => resubmitComplaint(complaintId))}
-                disabled={saving}
-              >
-                Resubmit
-              </Button>
+              {isOfficer ? (
+                <>
+                  <Button
+                    variant="secondary"
+                    onClick={() => void doAction(() => officerReview(complaintId))}
+                    disabled={saving}
+                  >
+                    Officer review
+                  </Button>
+
+                  <Button
+                    variant="secondary"
+                    onClick={() =>
+                      void doAction(() => {
+                        const msg = (prompt("Officer defect reason (required):") ?? "").trim();
+                        if (!msg) throw new Error("Officer reason is required.");
+                        return officerReject(complaintId, msg);
+                      })
+                    }
+                    disabled={saving}
+                  >
+                    Officer defect
+                  </Button>
+                </>
+              ) : null}
+
+              {isOwner || isAdminish ? (
+                <Button
+                  variant="secondary"
+                  onClick={() =>
+                    void doAction(() => {
+                      const existingPayload =
+                        (((data as Record<string, unknown>)?.payload as Record<string, unknown>) ?? {}) as Record<
+                          string,
+                          unknown
+                        >;
+                      // Keep the existing payload but ensure required fields reflect the current form values.
+                      const nextPayload = {
+                        ...existingPayload,
+                        title,
+                        description,
+                      };
+                      return resubmitComplaint(complaintId, { payload: nextPayload });
+                    })
+                  }
+                  disabled={saving}
+                >
+                  Resubmit
+                </Button>
+              ) : null}
             </div>
 
             {data ? (

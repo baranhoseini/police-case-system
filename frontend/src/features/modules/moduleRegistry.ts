@@ -45,5 +45,5 @@ export const MODULES: ModuleInfo[] = [
     description: "Severe tracking list and rewards.",
     to: "/most-wanted",
   },
-  { key: "ADMIN", title: "Admin", description: "Manage users, roles, and settings.", to: "/admin" },
+  { key: "ADMIN", title: "Admin", description: "Manage users, roles, and settings.", to: "http://localhost:8001/admin/" },
 ];

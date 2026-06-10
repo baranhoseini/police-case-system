@@ -31,6 +31,18 @@ DEBUG = os.getenv("DEBUG", "1") == "1"
 
 ALLOWED_HOSTS = os.getenv("ALLOWED_HOSTS", "127.0.0.1,localhost").split(",")
 
+PAYMENT_GATEWAY = os.getenv("PAYMENT_GATEWAY", "mock")
+FRONTEND_PAYMENT_RETURN_URL = os.getenv("FRONTEND_PAYMENT_RETURN_URL", "")
+ZARINPAL_MERCHANT_ID = os.getenv("ZARINPAL_MERCHANT_ID", "")
+ZARINPAL_SANDBOX = os.getenv("ZARINPAL_SANDBOX", "0") == "1"
+ZARINPAL_CURRENCY = os.getenv("ZARINPAL_CURRENCY", "IRR")
+ZARINPAL_REQUEST_URL = os.getenv("ZARINPAL_REQUEST_URL", "https://payment.zarinpal.com/pg/v4/payment/request.json")
+ZARINPAL_VERIFY_URL = os.getenv("ZARINPAL_VERIFY_URL", "https://payment.zarinpal.com/pg/v4/payment/verify.json")
+ZARINPAL_STARTPAY_URL = os.getenv("ZARINPAL_STARTPAY_URL", "https://payment.zarinpal.com/pg/StartPay/")
+ZARINPAL_REQUEST_URL_SANDBOX = os.getenv("ZARINPAL_REQUEST_URL_SANDBOX", "https://sandbox.zarinpal.com/pg/v4/payment/request.json")
+ZARINPAL_VERIFY_URL_SANDBOX = os.getenv("ZARINPAL_VERIFY_URL_SANDBOX", "https://sandbox.zarinpal.com/pg/v4/payment/verify.json")
+ZARINPAL_STARTPAY_URL_SANDBOX = os.getenv("ZARINPAL_STARTPAY_URL_SANDBOX", "https://sandbox.zarinpal.com/pg/StartPay/")
+
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",
     "http://localhost:5173",

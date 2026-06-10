@@ -1,18 +1,38 @@
-import type { ID, ISODateString } from "./common";
-
 export type RoleKey =
-  | "CITIZEN"
-  | "POLICE_OFFICER"
-  | "DETECTIVE"
-  | "CAPTAIN"
-  | "JUDGE"
-  | "CHIEF"
-  | "ADMIN";
+  // Document-canonical role names
+  | "Administrator"
+  | "Chief"
+  | "Captain"
+  | "Sergent"
+  | "Detective"
+  | "Police Officer"
+  | "Patrol Officer"
+  | "Cadet"
+  | "Complainant"
+  | "Witness"
+  | "Suspect"
+  | "Criminal"
+  | "Judge"
+  | "Corenary"
+  | "Base user"
+  // Extra / referenced in code
+  | "Supervisor"
+  // Legacy/internal aliases (backend is alias-aware; keep for safety)
+  | "Admin"
+  | "Officer"
+  | "Patrol"
+  | "Sergeant"
+  | "Coroner"
+  | "Citizen";
 
 export type User = {
-  id: ID;
-  fullName: string;
+  id: string;
+  username: string;
+  first_name: string;
+  last_name: string;
   email: string;
-  role: RoleKey;
-  createdAt?: ISODateString;
+  phone: string;
+  national_id: string;
+  roles: RoleKey[];
+  primary_role: RoleKey | null;
 };
